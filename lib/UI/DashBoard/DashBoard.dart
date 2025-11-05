@@ -61,23 +61,76 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
     final bool isTabletOrDesktop = screenWidth > 700;
     if (isTabletOrDesktop) {
       return Scaffold(
-        body: Row(
+        body: Column(
           children: [
+            // 🟣 Add top AppBar for tablet/desktop
             Container(
-              width: 250,
-              color: appPrimaryColor,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              color: appPrimaryColor.withOpacity(0.9),
+              height: 60,
+              padding: const EdgeInsets.only(top: 16, left: 16, right: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildHeader(),
-                  const SizedBox(height: 10),
-                  Expanded(child: _buildMenuList(isTabletOrDesktop)),
-                  _buildLogoutButton(),
+                  Row(
+                    children: [
+                      Icon(Icons.handyman, color: orangeColor),
+                      SizedBox(width: 10),
+                      Text(
+                        "Rolex Car Workshop",
+                        style: TextStyle(
+                          color: whiteColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Column(
+                    children: [
+                      Text(
+                        "Rolex S",
+                        style: const TextStyle(
+                          color: whiteColor,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        "ADMIN",
+                        style: const TextStyle(
+                          color: whiteColor70,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
             Expanded(
-              child: Container(color: whiteColor, child: pages[selectedIndex]),
+              child: Row(
+                children: [
+                  Container(
+                    width: 250,
+                    color: appPrimaryColor,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        //_buildHeader(),
+                        const SizedBox(height: 10),
+                        Expanded(child: _buildMenuList(isTabletOrDesktop)),
+                        _buildLogoutButton(),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Container(
+                      color: whiteColor,
+                      child: pages[selectedIndex],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -85,7 +138,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
     } else {
       return Scaffold(
         appBar: AppBar(
-          backgroundColor: appPrimaryColor,
+          backgroundColor: appPrimaryColor.withOpacity(0.9),
           iconTheme: const IconThemeData(color: whiteColor),
           title: const Text(
             'Rolex car workshop',
@@ -95,6 +148,27 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
               fontSize: 16,
             ),
           ),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(top: 16, right: 16),
+              child: Column(
+                children: [
+                  Text(
+                    "Rolex S",
+                    style: const TextStyle(
+                      color: whiteColor,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    "ADMIN",
+                    style: const TextStyle(color: whiteColor70, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
         drawer: Drawer(
           backgroundColor: appPrimaryColor,

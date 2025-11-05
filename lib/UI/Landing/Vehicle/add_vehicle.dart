@@ -1,24 +1,40 @@
 import 'package:carwash/Bloc/demo/demo_bloc.dart';
 import 'package:carwash/Reusable/color.dart';
+import 'package:carwash/UI/Landing/Customer/add_customer.dart';
+import 'package:carwash/UI/Landing/JobCard/search_text_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class AddVehicle extends StatelessWidget {
   final bool isTablet;
-  const AddVehicle({super.key, required this.isTablet});
+  final String from;
+  final String name;
+  const AddVehicle({
+    super.key,
+    required this.isTablet,
+    required this.from,
+    required this.name,
+  });
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => DemoBloc(),
-      child: AddVehicleView(isTablet: isTablet),
+      child: AddVehicleView(isTablet: isTablet, from: from, name: name),
     );
   }
 }
 
 class AddVehicleView extends StatefulWidget {
   final bool isTablet;
-  const AddVehicleView({super.key, required this.isTablet});
+  final String from;
+  final String name;
+  const AddVehicleView({
+    super.key,
+    required this.isTablet,
+    required this.from,
+    required this.name,
+  });
 
   @override
   State<AddVehicleView> createState() => _AddVehicleViewState();
@@ -33,11 +49,31 @@ class _AddVehicleViewState extends State<AddVehicleView> {
   final vinController = TextEditingController();
   bool isActive = true;
   String? selectedYear;
-
+  String? selectedCustomer;
+  TextEditingController customerController = TextEditingController();
+  final List<Map<String, String>> customers = [
+    {"name": "Prakash Prakash", "email": "", "phone": "8908907654"},
+    {
+      "name": "Saranya Thangaraj",
+      "email": "sentinix@gmail.com",
+      "phone": "8908907654",
+    },
+    {
+      "name": "Pradeep M",
+      "email": "pradeep@yopmail.com",
+      "phone": "8908907654",
+    },
+  ];
   @override
   void initState() {
     super.initState();
     selectedYear = DateTime.now().year.toString();
+  }
+
+  @override
+  void dispose() {
+    customerController.dispose();
+    super.dispose();
   }
 
   @override
@@ -80,18 +116,56 @@ class _AddVehicleViewState extends State<AddVehicleView> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: appSecondaryColor.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(8),
+                if (widget.from == "addJobCard")
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: appSecondaryColor.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      "Customer: ${widget.name}",
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
                   ),
-                  child: const Text(
-                    "Customer: Prakash Prakash",
-                    style: TextStyle(fontWeight: FontWeight.w600),
+                if (widget.from == "vehicle")
+                  _buildSearchableDropdown(
+                    label: "Customer",
+                    controller: customerController,
+                    items: customers.map((c) => c['name']!).toList(),
+                    icon: Icons.person_outline,
+                    onAddNew: () => _showAddCustomerDialog(context),
+                    displayBuilder: (index) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            customers[index]['name']!,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: appPrimaryColor,
+                            ),
+                          ),
+                          if (customers[index]['email']!.isNotEmpty)
+                            Text(
+                              customers[index]['email']!,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: greyColor,
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                    onItemSelected: (selectedItem) {
+                      setState(() {
+                        customerController.text = selectedItem;
+                        debugPrint("Selected Customer: $selectedItem");
+                      });
+                    },
                   ),
-                ),
                 const SizedBox(height: 16),
                 widget.isTablet
                     ? Row(
@@ -284,6 +358,100 @@ class _AddVehicleViewState extends State<AddVehicleView> {
           return mainContainer();
         },
       ),
+    );
+  }
+
+  Widget _buildSearchableDropdown({
+    required String label,
+    required TextEditingController controller,
+    required List<String> items,
+    IconData? icon,
+    VoidCallback? onAddNew,
+    Widget Function(int index)? displayBuilder,
+    ValueChanged<String>? onItemSelected,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle(
+          icon: icon ?? Icons.label_outline,
+          title: label,
+          trailing: onAddNew != null ? _buildAddNewButton(onAddNew) : null,
+        ),
+        const SizedBox(height: 6),
+        SearchableTextField(
+          controller: controller,
+          items: items,
+          hintText: "Search $label",
+          onItemSelected: onItemSelected,
+          displayBuilder: displayBuilder,
+        ),
+      ],
+    );
+  }
+
+  Widget _sectionTitle({
+    required IconData icon,
+    required String title,
+    Widget? trailing,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 18, color: appPrimaryColor),
+            const SizedBox(width: 6),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 14,
+                color: appPrimaryColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        if (trailing != null) trailing,
+      ],
+    );
+  }
+
+  Widget _buildAddNewButton(VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Text(
+        "+ Add New",
+        style: TextStyle(
+          color: appSecondaryColor,
+          fontWeight: FontWeight.w500,
+          fontSize: 14,
+        ),
+      ),
+    );
+  }
+
+  void _showAddCustomerDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierColor: greyColor.withOpacity(0.85),
+      builder: (context) {
+        final isTablet = MediaQuery.of(context).size.width > 600;
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          clipBehavior: Clip.antiAlias,
+          insetPadding: EdgeInsets.symmetric(
+            horizontal: isTablet ? 100 : 16,
+            vertical: isTablet ? 60 : 24,
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 700),
+            child: AddCustomer(isTablet: isTablet),
+          ),
+        );
+      },
     );
   }
 

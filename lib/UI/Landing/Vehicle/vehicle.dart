@@ -95,7 +95,7 @@ class _VehiclesPageViewState extends State<VehiclesPageView> {
             constraints: const BoxConstraints(maxWidth: 700),
             child: isEdit == true
                 ? EditVehicle(isTablet: isTablet)
-                : AddVehicle(isTablet: isTablet),
+                : AddVehicle(isTablet: isTablet, from: "vehicle", name: ""),
           ),
         );
       },

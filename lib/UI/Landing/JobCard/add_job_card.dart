@@ -1,3 +1,4 @@
+import 'package:carwash/Alertbox/snackBarAlert.dart';
 import 'package:carwash/Bloc/demo/demo_bloc.dart';
 import 'package:carwash/Reusable/color.dart';
 import 'package:carwash/UI/Landing/Customer/add_customer.dart';
@@ -179,7 +180,11 @@ class _AddJobCardViewState extends State<AddJobCardView>
           ),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 700),
-            child: AddVehicle(isTablet: isTablet),
+            child: AddVehicle(
+              isTablet: isTablet,
+              from: "addJobCard",
+              name: customerController.text,
+            ),
           ),
         );
       },
@@ -279,7 +284,17 @@ class _AddJobCardViewState extends State<AddJobCardView>
             controller: vehicleController,
             items: vehicles.map((c) => c['name']!).toList(),
             icon: Icons.directions_car_outlined,
-            onAddNew: () => _showAddVehiclesDialog(context),
+            onAddNew: () {
+              if (customerController.text.isEmpty) {
+                showToast(
+                  "Choose customer to add new vehicle",
+                  context,
+                  color: false,
+                );
+              } else {
+                _showAddVehiclesDialog(context);
+              }
+            },
             displayBuilder: (index) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

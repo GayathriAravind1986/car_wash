@@ -25,6 +25,7 @@ const blackColor87 = Colors.black87;
 const blueColor = Colors.blue;
 const blueGreyColor = Colors.blueGrey;
 const whiteColor = Colors.white;
+const whiteColor70 = Colors.white70;
 const redColor = Colors.red;
 const greyColor = Colors.grey;
 var greyColor200 = Colors.grey[200];
