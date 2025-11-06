@@ -182,6 +182,7 @@ class _JobCardsPageViewState extends State<JobCardsPageView> {
   @override
   Widget build(BuildContext context) {
     final isTablet = MediaQuery.of(context).size.width >= 600;
+
     Widget mainContainer() {
       return Padding(
         padding: EdgeInsets.symmetric(

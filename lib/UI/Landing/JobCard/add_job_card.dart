@@ -5,6 +5,7 @@ import 'package:carwash/UI/Landing/Customer/add_customer.dart';
 import 'package:carwash/UI/Landing/JobCard/search_text_controller.dart';
 import 'package:carwash/UI/Landing/Vehicle/add_vehicle.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
@@ -43,6 +44,24 @@ class _AddJobCardViewState extends State<AddJobCardView>
   String? selectedStatus = "Pending";
   TextEditingController dateController = TextEditingController();
   TextEditingController notesController = TextEditingController();
+  TextEditingController searchController = TextEditingController();
+  final Map<int, TextEditingController> _priceControllers = {};
+  List<Map<String, dynamic>> availableServices = [
+    {"name": "Water wash", "price": 500.0},
+    {"name": "Wheel Alignment", "price": 2000.0},
+    {"name": "Oil Change", "price": 800.0},
+  ];
+
+  List<Map<String, dynamic>> selectedServices = [];
+
+  List<Map<String, dynamic>> availableSpares = [
+    {'name': 'Bolt', 'part': '123', 'stock': 10, 'price': 10.0},
+    {'name': 'Brake oil', 'part': '89200KPL', 'stock': 90, 'price': 150.0},
+    {'name': 'Clutch pad', 'part': '029902', 'stock': 0, 'price': 100.0},
+    {'name': 'Wheel', 'part': '12', 'stock': 5, 'price': 5000.0},
+  ];
+
+  List<Map<String, dynamic>> selectedSpares = [];
 
   final List<Map<String, String>> customers = [
     {"name": "Prakash Prakash", "email": "", "phone": "8908907654"},
@@ -64,12 +83,55 @@ class _AddJobCardViewState extends State<AddJobCardView>
   ];
   final List<String> locations = ["Chennai", "Madurai", "Coimbatore"];
   final List<String> statuses = ["Pending", "In Progress", "Completed"];
+  void _toggleSpareSelection(Map<String, dynamic> spare) {
+    final existingIndex = selectedSpares.indexWhere(
+      (item) => item['part'] == spare['part'],
+    );
+    if (existingIndex == -1 && spare['stock'] > 0) {
+      setState(() {
+        selectedSpares.add({...spare, 'qty': 1});
+      });
+    } else if (existingIndex != -1) {
+      setState(() {
+        selectedSpares.removeAt(existingIndex);
+      });
+    }
+  }
+
+  void _incrementQty(int index) {
+    setState(() {
+      if (selectedSpares[index]['qty'] < selectedSpares[index]['stock']) {
+        selectedSpares[index]['qty']++;
+      }
+    });
+  }
+
+  void _decrementQty(int index) {
+    setState(() {
+      if (selectedSpares[index]['qty'] > 1) {
+        selectedSpares[index]['qty']--;
+      } else {
+        selectedSpares.removeAt(index);
+      }
+    });
+  }
+
+  void _removeSelected(int index) {
+    setState(() {
+      selectedSpares.removeAt(index);
+    });
+  }
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     dateController.text = DateFormat('dd-MM-yyyy').format(DateTime.now());
+    for (int i = 0; i < availableSpares.length; i++) {
+      _priceControllers[i] = TextEditingController(
+        text: availableSpares[i]['price'].toStringAsFixed(2),
+      );
+    }
   }
 
   @override
@@ -79,6 +141,9 @@ class _AddJobCardViewState extends State<AddJobCardView>
     dateController.dispose();
     notesController.dispose();
     _tabController.dispose();
+    for (var controller in _priceControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -109,8 +174,8 @@ class _AddJobCardViewState extends State<AddJobCardView>
               controller: _tabController,
               children: [
                 _buildDetailsForm(widget.isTablet, textTheme),
-                const Center(child: Text("Services content here")),
-                const Center(child: Text("Spares content here")),
+                _buildService(widget.isTablet),
+                _buildSpares(widget.isTablet),
                 const Center(child: Text("Summary content here")),
               ],
             ),
@@ -191,6 +256,7 @@ class _AddJobCardViewState extends State<AddJobCardView>
     );
   }
 
+  /// Details Screen
   Widget _buildDetailsForm(bool isTablet, TextTheme textTheme) {
     return SingleChildScrollView(
       padding: EdgeInsets.symmetric(
@@ -582,5 +648,599 @@ class _AddJobCardViewState extends State<AddJobCardView>
         dateController.text = DateFormat('dd-MM-yyyy').format(picked);
       });
     }
+  }
+
+  /// Service Screen
+  Widget _buildService(bool isTablet) {
+    return Padding(
+      padding: EdgeInsets.all(isTablet ? 24 : 12),
+      child: isTablet
+          ? SingleChildScrollView(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 1, child: _buildAvailableServicesCard()),
+                  const SizedBox(width: 20),
+                  Expanded(flex: 1, child: _buildSelectedServicesCard()),
+                ],
+              ),
+            )
+          : SingleChildScrollView(
+              child: Column(
+                children: [
+                  _buildAvailableServicesCard(),
+                  const SizedBox(height: 20),
+                  _buildSelectedServicesCard(),
+                ],
+              ),
+            ),
+    );
+  }
+
+  Widget _buildAvailableServicesCard() {
+    return _buildCard(
+      title: "Available Services",
+      child: Column(
+        children: [
+          // 🔍 Search box just below the title
+          TextField(
+            decoration: InputDecoration(
+              hintText: 'Search services...',
+              prefixIcon: const Icon(Icons.search),
+              contentPadding: const EdgeInsets.symmetric(
+                vertical: 0,
+                horizontal: 16,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: greyColor300!),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: greyColor300!),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: appSecondaryColor),
+              ),
+            ),
+            onChanged: (value) {
+              // optional: implement search filter logic
+              setState(() {
+                // availableServices = availableServices
+                //     .where(
+                //       (service) => service['name'].toLowerCase().contains(
+                //         value.toLowerCase(),
+                //       ),
+                //     )
+                //     .toList();
+              });
+            },
+          ),
+          const SizedBox(height: 10),
+
+          // 🧾 Scrollable service list
+          SingleChildScrollView(
+            child: Column(
+              children: availableServices.map((service) {
+                bool isSelected = selectedServices.contains(service);
+                return GestureDetector(
+                  onTap: () => _toggleSelection(service),
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(vertical: 6),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? appSecondaryColor.withOpacity(0.08)
+                          : whiteColor,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isSelected ? appSecondaryColor : greyColor300!,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          service['name'],
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Text("₹${service['price'].toStringAsFixed(2)}"),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSelectedServicesCard() {
+    final total = selectedServices.fold<double>(
+      0.0,
+      (sum, item) => sum + (item['price'] as double),
+    );
+
+    return _buildCard(
+      title: "Selected Services (${selectedServices.length})",
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        constraints: const BoxConstraints(
+          minHeight: 240, // Ensures consistent minimum height
+        ),
+        alignment: Alignment.center,
+        child: selectedServices.isEmpty
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.info_outline, size: 20, color: greyColor),
+                    const SizedBox(height: 8),
+                    Text(
+                      "Select services from the left panel",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: greyColor,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            : Column(
+                children: [
+                  ...selectedServices.map((service) {
+                    return Container(
+                      margin: const EdgeInsets.symmetric(vertical: 6),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: appSecondaryColor.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: appSecondaryColor),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                service['name'],
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Text("₹${service['price'].toStringAsFixed(2)}"),
+                            ],
+                          ),
+                          GestureDetector(
+                            onTap: () => _toggleSelection(service),
+                            child: const Icon(Icons.close, color: redColor),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                  const Divider(height: 25),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "Total",
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: appPrimaryColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          "₹${total.toStringAsFixed(2)}",
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: appPrimaryColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _buildCard({required String title, required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: whiteColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: greyColor300!),
+        boxShadow: [
+          BoxShadow(color: greyColor200!, spreadRadius: 1, blurRadius: 5),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+          child,
+        ],
+      ),
+    );
+  }
+
+  void _toggleSelection(Map<String, dynamic> service) {
+    setState(() {
+      if (selectedServices.contains(service)) {
+        selectedServices.remove(service);
+      } else {
+        selectedServices.add(service);
+      }
+    });
+  }
+
+  /// spares screen
+  Widget _buildSpares(bool isTablet) {
+    return Padding(
+      padding: EdgeInsets.all(isTablet ? 24 : 12),
+      child: isTablet
+          ? Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(flex: 1, child: _buildAvailableSparesCard()),
+                const SizedBox(width: 20),
+                Expanded(flex: 1, child: _buildSelectedSparesCard()),
+              ],
+            )
+          : SingleChildScrollView(
+              child: Column(
+                children: [
+                  _buildAvailableSparesCard(),
+                  const SizedBox(height: 20),
+                  _buildSelectedSparesCard(),
+                ],
+              ),
+            ),
+    );
+  }
+
+  Widget _buildAvailableSparesCard() {
+    return _buildSpareCard(
+      title: "Available Spares",
+      child: Column(
+        children: [
+          TextField(
+            decoration: InputDecoration(
+              hintText: 'Search by name or part number...',
+              prefixIcon: const Icon(Icons.search),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: ListView.builder(
+              itemCount: availableSpares.length,
+              itemBuilder: (context, index) {
+                final spare = availableSpares[index];
+                final isSelected = selectedSpares.any(
+                  (selected) => selected['part'] == spare['part'],
+                );
+                final inStock = spare['stock'] > 0;
+
+                return GestureDetector(
+                  onTap: inStock ? () => _toggleSpareSelection(spare) : null,
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(vertical: 6),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? appSecondaryColor.withOpacity(0.08)
+                          : inStock
+                          ? whiteColor
+                          : greyColor200,
+                      border: Border.all(
+                        color: isSelected ? appSecondaryColor : greyColor300!,
+                      ),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                spare['name'],
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Text(
+                                'Part: ${spare['part']} | Stock: ${spare['stock']}',
+                                style: TextStyle(
+                                  color: inStock
+                                      ? blackColor54
+                                      : redAccentColor,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          '₹${spare['price'].toStringAsFixed(2)}',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 🔹 Selected Spares
+  Widget _buildSelectedSparesCard() {
+    final total = selectedSpares.fold<double>(
+      0.0,
+      (sum, item) => sum + (item['price'] * item['qty']),
+    );
+    return _buildSpareCard(
+      title: "Selected Spares (${selectedSpares.length})",
+      child: Column(
+        children: [
+          Expanded(
+            child: selectedSpares.isEmpty
+                ? const Center(child: Text('No spares selected yet'))
+                : ListView.builder(
+                    itemCount: selectedSpares.length,
+                    itemBuilder: (context, index) {
+                      final spare = selectedSpares[index];
+                      return Container(
+                        margin: const EdgeInsets.symmetric(vertical: 6),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: appSecondaryColor.withOpacity(0.08),
+                          border: Border.all(color: appSecondaryColor),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  spare['name'],
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () => _removeSelected(index),
+                                  child: const Icon(
+                                    Icons.close,
+                                    color: redColor,
+                                    size: 20,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Text('Part: ${spare['part']}'),
+                            const SizedBox(height: 6),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.remove, size: 20),
+                                      onPressed: () => _decrementQty(index),
+                                    ),
+                                    Text('${spare['qty']}'),
+                                    IconButton(
+                                      icon: const Icon(Icons.add, size: 20),
+                                      onPressed: () => _incrementQty(index),
+                                    ),
+                                  ],
+                                ),
+                                Row(
+                                  children: [
+                                    SizedBox(
+                                      width: 100,
+                                      child: TextField(
+                                        cursorColor: appPrimaryColor,
+                                        controller: _priceControllers[index],
+                                        textAlign: TextAlign.center,
+                                        keyboardType:
+                                            const TextInputType.numberWithOptions(
+                                              decimal: true,
+                                            ),
+                                        inputFormatters: [
+                                          FilteringTextInputFormatter.allow(
+                                            RegExp(r'^\d*\.?\d{0,2}'),
+                                          ),
+                                        ],
+                                        decoration: InputDecoration(
+                                          prefixIcon: const Padding(
+                                            padding: EdgeInsets.only(
+                                              left: 10,
+                                              right: 2,
+                                              top: 8,
+                                              bottom: 8,
+                                            ),
+                                            child: Text(
+                                              '₹',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w500,
+                                                color: blackColor87,
+                                              ),
+                                            ),
+                                          ),
+                                          prefixIconConstraints:
+                                              const BoxConstraints(
+                                                minWidth: 0,
+                                                minHeight: 0,
+                                              ),
+                                          isDense: true,
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                vertical: 6,
+                                                horizontal: 8,
+                                              ),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                            borderSide: BorderSide(
+                                              color: greyColor,
+                                            ), // your existing gray color
+                                          ),
+                                          focusedBorder:
+                                              const OutlineInputBorder(
+                                                borderRadius: BorderRadius.all(
+                                                  Radius.circular(8),
+                                                ),
+                                                borderSide: BorderSide(
+                                                  color: appSecondaryColor,
+                                                  width: 1.5,
+                                                ),
+                                              ),
+                                        ),
+                                        onChanged: (v) {
+                                          final value =
+                                              double.tryParse(v) ??
+                                              spare['price'];
+                                          setState(() {
+                                            spare['price'] = value;
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      '₹${(spare['price'] * spare['qty']).toStringAsFixed(2)}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            Text(
+                              'In stock: ${spare['stock']}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: blackColor54,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          const Divider(),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Subtotal',
+                style: TextStyle(
+                  color: appPrimaryColor,
+                  fontWeight: FontWeight.w400,
+                  fontSize: 14,
+                ),
+              ),
+              Text(
+                '₹${total.toStringAsFixed(2)}',
+                style: TextStyle(
+                  color: appPrimaryColor,
+                  fontWeight: FontWeight.w400,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Total',
+                style: TextStyle(
+                  color: appPrimaryColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              Text(
+                '₹${total.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  color: greenColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSpareCard({required String title, required Widget child}) {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: MediaQuery.of(context).size.height * 0.6,
+              child: child,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

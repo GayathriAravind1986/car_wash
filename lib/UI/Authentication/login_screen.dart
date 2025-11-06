@@ -1,4 +1,6 @@
+import 'package:carwash/Bloc/Authentication/login_bloc.dart';
 import 'package:carwash/Bloc/demo/demo_bloc.dart';
+import 'package:carwash/ModelClass/Authentication/postLoginModel.dart';
 import 'package:carwash/UI/Authentication/reset_password.dart';
 import 'package:carwash/UI/DashBoard/DashBoard.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +18,7 @@ class LoginScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => DemoBloc(),
+      create: (_) => LoginInBloc(),
       child: const LoginScreenView(),
     );
   }
@@ -30,7 +32,7 @@ class LoginScreenView extends StatefulWidget {
 }
 
 class LoginScreenViewState extends State<LoginScreenView> {
-  //PostLoginModel postLoginModel = PostLoginModel();
+  PostLoginModel postLoginModel = PostLoginModel();
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   TextEditingController email = TextEditingController();
@@ -212,13 +214,14 @@ class LoginScreenViewState extends State<LoginScreenView> {
                       ? const SpinKitCircle(color: appPrimaryColor, size: 30)
                       : InkWell(
                           onTap: () {
-                            Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const DashBoardScreen(selectedTab: 0),
-                              ),
-                              (Route<dynamic> route) => false,
-                            );
+                            if (_formKey.currentState!.validate()) {
+                              setState(() {
+                                loginLoad = true;
+                              });
+                              context.read<LoginInBloc>().add(
+                                LoginIn(email.text, password.text),
+                              );
+                            }
                           },
                           child: appButton(
                             height: 50,
@@ -238,37 +241,33 @@ class LoginScreenViewState extends State<LoginScreenView> {
 
     return Scaffold(
       backgroundColor: whiteColor,
-      body: BlocBuilder<DemoBloc, dynamic>(
+      body: BlocBuilder<LoginInBloc, dynamic>(
         buildWhen: ((previous, current) {
-          //            if (current is PostLoginModel) {
-          //              postLoginModel = current;
-          //              if (postLoginModel.success == true) {
-          //                setState(() {
-          //                  loginLoad = false;
-          //                });
-          //                showToast('${postLoginModel.message}', context, color: true);
-          //                if (postLoginModel.user!.role == "OPERATOR") {
-          //                  Navigator.of(context).pushAndRemoveUntil(
-          //                      MaterialPageRoute(
-          //                          builder: (context) => const DashBoardScreen(
-          //                                selectTab: 0,
-          //                              )),
-          //                      (Route<dynamic> route) => false);
-          //                } else {
-          //                  showToast("Please Login Admin in Web", context, color: false);
-          //                }
-          //              } else {
-          //                final errorMsg =
-          //                    postLoginModel.errorResponse?.errors?.first.message ??
-          //                        postLoginModel.message ??
-          //                        "Login failed. Please try again.";
-          //                showToast(errorMsg, context, color: false);
-          //                setState(() {
-          //                  loginLoad = false;
-          //                });
-          //              }
-          //              return true;
-          //            }
+          if (current is PostLoginModel) {
+            postLoginModel = current;
+            if (postLoginModel.success == true) {
+              setState(() {
+                loginLoad = false;
+              });
+              showToast('${postLoginModel.message}', context, color: true);
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(
+                  builder: (context) => const DashBoardScreen(selectedTab: 0),
+                ),
+                (Route<dynamic> route) => false,
+              );
+            } else {
+              final errorMsg =
+                  postLoginModel.errorResponse?.errors?.first.message ??
+                  postLoginModel.message ??
+                  "Login failed. Please try again.";
+              showToast(errorMsg, context, color: false);
+              setState(() {
+                loginLoad = false;
+              });
+            }
+            return true;
+          }
           return false;
         }),
         builder: (context, dynamic) {

@@ -1,5 +1,11 @@
+import 'dart:convert';
+
+import 'package:carwash/ModelClass/Authentication/postLoginModel.dart';
+import 'package:carwash/Reusable/constant.dart';
 import 'package:dio/dio.dart';
 import 'package:carwash/Bloc/Response/errorResponse.dart';
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// All API Integration in ApiProvider
 class ApiProvider {
@@ -12,6 +18,73 @@ class ApiProvider {
       receiveTimeout: const Duration(seconds: 30),
     );
     _dio = Dio(options);
+  }
+
+  /// LoginWithOTP API Integration
+  Future<PostLoginModel> loginAPI(String email, String password) async {
+    try {
+      final dataMap = {"email": email, "password": password};
+      var dio = Dio();
+      final response = await dio.post(
+        '${Constants.baseUrl}auth/signin'.trim(),
+        data: json.encode(dataMap),
+        options: Options(headers: {"Content-Type": "application/json"}),
+      );
+      debugPrint("🟢 RESPONSE CODE: ${response.statusCode}");
+      debugPrint("🟢 RESPONSE DATA: ${response.data}");
+      if (response.statusCode == 200 && response.data != null) {
+        // ✅ Login success
+        if (response.data['success'] == true) {
+          final postLoginResponse = PostLoginModel.fromJson(response.data);
+
+          final prefs = await SharedPreferences.getInstance();
+          prefs.setString(
+            "firstName",
+            postLoginResponse.user!.firstName.toString(),
+          );
+          prefs.setString(
+            "lastName",
+            postLoginResponse.user!.lastName.toString(),
+          );
+          prefs.setString("role", postLoginResponse.user!.roleCode.toString());
+          prefs.setString("userId", postLoginResponse.user!.id.toString());
+
+          return postLoginResponse;
+        } else {
+          // ✅ success = false → show backend message
+          return PostLoginModel()
+            ..errorResponse = ErrorResponse(
+              message: response.data['message'] ?? "Login failed.",
+            );
+        }
+      }
+
+      // ✅ Handle unauthorized (401) or other errors with message
+      if (response.statusCode == 401 && response.data != null) {
+        return PostLoginModel()
+          ..errorResponse = ErrorResponse(
+            message: response.data['message'] ?? "Invalid credentials.",
+          );
+      }
+      //✅ Handle unauthorized (500) or other errors with message
+      if (response.statusCode == 500 && response.data != null) {
+        return PostLoginModel()
+          ..errorResponse = ErrorResponse(
+            message: response.data['message'] ?? "Invalid credentials.",
+          );
+      }
+      // ✅ Unexpected
+      return PostLoginModel()
+        ..errorResponse = ErrorResponse(message: "Unexpected error occurred.");
+    } on DioException catch (dioError) {
+      // debugPrint("🔴 DIO ERROR TYPE: ${dioError.type}");
+      // debugPrint("🔴 DIO ERROR MESSAGE: ${dioError.message}");
+      final errorResponse = handleError(dioError);
+      return PostLoginModel()..errorResponse = errorResponse;
+    } catch (error) {
+      // debugPrint("🔴 GENERAL ERROR: $error");
+      return PostLoginModel()..errorResponse = handleError(error);
+    }
   }
 
   /// handle Error Response
