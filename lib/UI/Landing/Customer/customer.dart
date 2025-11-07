@@ -1,9 +1,11 @@
-import 'package:carwash/Bloc/demo/demo_bloc.dart';
+import 'package:carwash/Bloc/Customer/customer_bloc.dart';
+import 'package:carwash/ModelClass/Customer/getAllCustomerModel.dart';
 import 'package:carwash/Reusable/color.dart';
 import 'package:carwash/UI/Landing/Customer/add_customer.dart';
 import 'package:carwash/UI/Landing/Customer/edit_customer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 
 class CustomersPage extends StatelessWidget {
   const CustomersPage({super.key});
@@ -11,7 +13,7 @@ class CustomersPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => DemoBloc(),
+      create: (_) => CustomerBloc(),
       child: const CustomersPageView(),
     );
   }
@@ -25,9 +27,11 @@ class CustomersPageView extends StatefulWidget {
 }
 
 class _CustomersPageViewState extends State<CustomersPageView> {
+  GetAllCustomerModel getAllCustomerModel = GetAllCustomerModel();
   final TextEditingController _searchController = TextEditingController();
   int currentPage = 1;
   bool? isEdit = false;
+  bool customerLoad = false;
   final List<Map<String, dynamic>> customer = [
     {"name": "Pradeep", "contact": "9780765435", "status": "Active"},
     {"name": "Vinoth", "contact": "9996780654", "status": "Active"},
@@ -184,6 +188,12 @@ class _CustomersPageViewState extends State<CustomersPageView> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    context.read<CustomerBloc>().add(CustomerList());
+  }
+
+  @override
   Widget build(BuildContext context) {
     final isTablet = MediaQuery.of(context).size.width >= 600;
     Widget mainContainer() {
@@ -248,7 +258,7 @@ class _CustomersPageViewState extends State<CustomersPageView> {
                   child: const Text("Prev"),
                 ),
                 Text(
-                  "Showing 1–${customer.length} of ${customer.length}",
+                  "Showing 1–${getAllCustomerModel.result?.items!.length} of ${getAllCustomerModel.result?.items!.length}",
                   style: const TextStyle(color: blackColor54),
                 ),
                 OutlinedButton(onPressed: () {}, child: const Text("Next")),
@@ -296,37 +306,29 @@ class _CustomersPageViewState extends State<CustomersPageView> {
           ),
         ],
       ),
-      body: BlocBuilder<DemoBloc, dynamic>(
+      body: BlocBuilder<CustomerBloc, dynamic>(
         buildWhen: ((previous, current) {
-          //            if (current is PostLoginModel) {
-          //              postLoginModel = current;
-          //              if (postLoginModel.success == true) {
-          //                setState(() {
-          //                  loginLoad = false;
-          //                });
-          //                showToast('${postLoginModel.message}', context, color: true);
-          //                if (postLoginModel.user!.role == "OPERATOR") {
-          //                  Navigator.of(context).pushAndRemoveUntil(
-          //                      MaterialPageRoute(
-          //                          builder: (context) => const DashBoardScreen(
-          //                                selectTab: 0,
-          //                              )),
-          //                      (Route<dynamic> route) => false);
-          //                } else {
-          //                  showToast("Please Login Admin in Web", context, color: false);
-          //                }
-          //              } else {
-          //                final errorMsg =
-          //                    postLoginModel.errorResponse?.errors?.first.message ??
-          //                        postLoginModel.message ??
-          //                        "Login failed. Please try again.";
-          //                showToast(errorMsg, context, color: false);
-          //                setState(() {
-          //                  loginLoad = false;
-          //                });
-          //              }
-          //              return true;
-          //            }
+          if (current is GetAllCustomerModel) {
+            getAllCustomerModel = current;
+            if (getAllCustomerModel.success == true) {
+              debugPrint("customer result:${getAllCustomerModel.success}");
+              debugPrint(
+                "customer length:${getAllCustomerModel.result?.items?.length}",
+              );
+              setState(() {
+                customerLoad = false;
+              });
+            } else if (getAllCustomerModel.errorResponse != null) {
+              debugPrint(
+                "Error: ${getAllCustomerModel.errorResponse?.message}",
+              );
+            }
+            // if (getCategoryModel.errorResponse?.isUnauthorized == true) {
+            //   _handle401Error();
+            //   return true;
+            // }
+            return true;
+          }
           return false;
         }),
         builder: (context, dynamic) {
@@ -398,72 +400,89 @@ class _CustomersPageViewState extends State<CustomersPageView> {
 
   // 🔹 Mobile View => ListView Layout
   Widget _buildListView() {
-    return ListView.builder(
-      itemCount: customer.length,
-      itemBuilder: (context, index) {
-        final job = customer[index];
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      job["name"],
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text("Contact: ${job["contact"]}"),
-                const SizedBox(height: 8),
-                Row(children: [_statusBadge(job["status"])]),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          isEdit = true;
-                          _showAddEditCustomerDialog(context);
-                        });
-                      },
-                      child: Icon(
-                        Icons.edit,
-                        color: appSecondaryColor.withOpacity(0.7),
-                        size: 20,
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: () {
-                        showCustomerVehiclesPopup(context);
-                      },
-                      child: Icon(
-                        Icons.remove_red_eye_outlined,
-                        color: appSecondaryColor.withOpacity(0.7),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+    debugPrint("mobileViewCustomer");
+    return customerLoad
+        ? Container(
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).size.height * 0.2,
             ),
-          ),
-        );
-      },
-    );
+            alignment: Alignment.center,
+            child: const SpinKitChasingDots(color: appPrimaryColor, size: 30),
+          )
+        : (getAllCustomerModel.result?.items?.isEmpty ?? true)
+        ? const Center(child: Text('No customer Added yet'))
+        : ListView.builder(
+            itemCount: getAllCustomerModel.result?.items!.length,
+            itemBuilder: (context, index) {
+              final job = getAllCustomerModel.result?.items![index];
+              return Card(
+                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "${job?.firstName}",
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text("Contact: ${job?.phone}"),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          _statusBadge(
+                            job?.isActive == true ? "Active" : "InActive",
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                isEdit = true;
+                                _showAddEditCustomerDialog(context);
+                              });
+                            },
+                            child: Icon(
+                              Icons.edit,
+                              color: appSecondaryColor.withOpacity(0.7),
+                              size: 20,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () {
+                              showCustomerVehiclesPopup(context);
+                            },
+                            child: Icon(
+                              Icons.remove_red_eye_outlined,
+                              color: appSecondaryColor.withOpacity(0.7),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
   }
 
   // 🔹 Reusable status badge

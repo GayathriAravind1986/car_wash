@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:carwash/ModelClass/Authentication/postLoginModel.dart';
+import 'package:carwash/ModelClass/Customer/getAllCustomerModel.dart';
 import 'package:carwash/Reusable/constant.dart';
 import 'package:dio/dio.dart';
 import 'package:carwash/Bloc/Response/errorResponse.dart';
@@ -20,7 +21,8 @@ class ApiProvider {
     _dio = Dio(options);
   }
 
-  /// LoginWithOTP API Integration
+  ///  Authentication
+  /// LoginOTP API Integration
   Future<PostLoginModel> loginAPI(String email, String password) async {
     try {
       final dataMap = {"email": email, "password": password};
@@ -84,6 +86,57 @@ class ApiProvider {
     } catch (error) {
       // debugPrint("🔴 GENERAL ERROR: $error");
       return PostLoginModel()..errorResponse = handleError(error);
+    }
+  }
+
+  /// Customer
+  /// Customer List - API Integration
+  Future<GetAllCustomerModel> getAllCustomerAPI() async {
+    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    var userId = sharedPreferences.getString("userId");
+    try {
+      var dio = Dio();
+      debugPrint("URL: ${Constants.baseUrl}customers?offset=0&limit=10");
+      var response = await dio.request(
+        '${Constants.baseUrl}customers?offset=0&limit=10',
+        options: Options(
+          method: 'GET',
+          headers: {
+            "Content-Type": "application/json",
+            if (userId != null)
+              "Authorization": "Bearer $userId", // 👈 important
+          },
+        ),
+      );
+      debugPrint("🟢 RESPONSE CODE: ${response.statusCode}");
+      if (response.statusCode == 200 && response.data != null) {
+        debugPrint("🟢 RESPONSE CODE inside: ${response.statusCode}");
+        if (response.data['success'] == true) {
+          GetAllCustomerModel getAllCustomerResponse =
+              GetAllCustomerModel.fromJson(response.data);
+          debugPrint(
+            "✅ Parsed items count: ${getAllCustomerResponse.result?.items?.length}",
+          );
+          return getAllCustomerResponse;
+        }
+      } else {
+        return GetAllCustomerModel()
+          ..errorResponse = ErrorResponse(
+            message: "Error: ${response.data['message'] ?? 'Unknown error'}",
+            statusCode: response.statusCode,
+          );
+      }
+      return GetAllCustomerModel()
+        ..errorResponse = ErrorResponse(
+          message: "Unexpected error occurred.",
+          statusCode: 500,
+        );
+    } on DioException catch (dioError) {
+      final errorResponse = handleError(dioError);
+      return GetAllCustomerModel()..errorResponse = errorResponse;
+    } catch (error) {
+      final errorResponse = handleError(error);
+      return GetAllCustomerModel()..errorResponse = errorResponse;
     }
   }
 

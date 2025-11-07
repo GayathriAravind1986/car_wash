@@ -17,13 +17,13 @@ class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
-  dynamic token;
+  dynamic userId;
   dynamic role;
 
   @override
   void initState() {
     super.initState();
-    // callApis();
+    callApis();
 
     _controller = AnimationController(
       vsync: this,
@@ -49,25 +49,26 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> getToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      token = prefs.getString("token");
+      userId = prefs.getString("userId");
       role = prefs.getString("role");
     });
-    debugPrint("SplashToken: $token");
+    debugPrint("SplashUserId: $userId");
     debugPrint("SplashRole: $role");
   }
 
   void onTimerFinished() {
     if (mounted) {
-      // token == null && role == null
-      //     ?
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-      );
-      // : Navigator.of(context).pushAndRemoveUntil(
-      //     MaterialPageRoute(builder: (context) => const DashBoardScreen()),
-      //     (Route<dynamic> route) => false,
-      //   );
+      userId == null && role == null
+          ? Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const LoginScreen()),
+            )
+          : Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                builder: (context) => const DashBoardScreen(selectedTab: 0),
+              ),
+              (Route<dynamic> route) => false,
+            );
     }
   }
 
