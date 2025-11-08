@@ -6,6 +6,7 @@ import 'package:carwash/UI/Landing/JobCard/job_card.dart';
 import 'package:carwash/UI/Landing/Report/report.dart';
 import 'package:carwash/UI/Landing/Vehicle/vehicle.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class DashBoardScreen extends StatefulWidget {
   final int? selectedTab;
@@ -17,6 +18,9 @@ class DashBoardScreen extends StatefulWidget {
 
 class _DashBoardScreenState extends State<DashBoardScreen> {
   int selectedIndex = 0;
+  dynamic firstName;
+  dynamic lastName;
+  dynamic role;
   final List<Map<String, dynamic>> menuItems = [
     // {'icon': Icons.dashboard, 'title': 'Dashboard'},
     {'icon': Icons.assignment, 'title': 'Job Cards'},
@@ -46,9 +50,22 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
     Navigator.of(context).maybePop();
   }
 
+  Future<void> getUserDetails() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      firstName = prefs.getString("firstName");
+      lastName = prefs.getString("lastName");
+      role = prefs.getString("role");
+    });
+    debugPrint("firstName: $firstName");
+    debugPrint("lastName: $lastName");
+    debugPrint("role: $role");
+  }
+
   @override
   void initState() {
     super.initState();
+    getUserDetails();
     if (widget.selectedTab != null) {
       selectedIndex = widget.selectedTab!;
       debugPrint("selectedTabDash:${widget.selectedTab}");
@@ -88,7 +105,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                   Column(
                     children: [
                       Text(
-                        "Rolex S",
+                        "$firstName $lastName",
                         style: const TextStyle(
                           color: whiteColor,
                           fontSize: 14,
@@ -96,7 +113,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                         ),
                       ),
                       Text(
-                        "ADMIN",
+                        "$role",
                         style: const TextStyle(
                           color: whiteColor70,
                           fontSize: 13,
@@ -154,7 +171,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
               child: Column(
                 children: [
                   Text(
-                    "Rolex S",
+                    "$firstName $lastName",
                     style: const TextStyle(
                       color: whiteColor,
                       fontSize: 14,
@@ -162,7 +179,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                     ),
                   ),
                   Text(
-                    "ADMIN",
+                    "$role",
                     style: const TextStyle(color: whiteColor70, fontSize: 12),
                   ),
                 ],

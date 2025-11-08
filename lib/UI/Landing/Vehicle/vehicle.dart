@@ -1,10 +1,15 @@
-import 'package:carwash/Bloc/demo/demo_bloc.dart';
+import 'package:carwash/Alertbox/snackBarAlert.dart';
+import 'package:carwash/Bloc/Vehicle/vehicle_bloc.dart';
+import 'package:carwash/ModelClass/Vehicle/getAllVehiclesModel.dart';
 import 'package:carwash/Reusable/color.dart';
 import 'package:carwash/Reusable/text_styles.dart';
+import 'package:carwash/UI/Authentication/login_screen.dart';
 import 'package:carwash/UI/Landing/Vehicle/add_vehicle.dart';
 import 'package:carwash/UI/Landing/Vehicle/edit_vehicle.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class VehiclesPage extends StatelessWidget {
   const VehiclesPage({super.key});
@@ -12,7 +17,7 @@ class VehiclesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => DemoBloc(),
+      create: (_) => VehicleBloc(),
       child: const VehiclesPageView(),
     );
   }
@@ -26,32 +31,13 @@ class VehiclesPageView extends StatefulWidget {
 }
 
 class _VehiclesPageViewState extends State<VehiclesPageView> {
+  GetAllVehiclesModel getAllVehiclesModel = GetAllVehiclesModel();
   final TextEditingController _searchController = TextEditingController();
   int currentPage = 1;
+  int offset = 0;
+  int limit = 10;
+  bool vehicleLoad = false;
   bool? isEdit = false;
-  final List<Map<String, dynamic>> vehicle = [
-    {
-      "make": "Swift",
-      "model": "Vxi",
-      "regNo": "Tn76 8986",
-      "color": "White",
-      "status": "Active",
-    },
-    {
-      "make": "Swift",
-      "model": "ZXI",
-      "regNo": "TN76BY8986",
-      "color": "White",
-      "status": "Active",
-    },
-    {
-      "make": "Mercedez",
-      "model": "S-class",
-      "regNo": "TN-51-MP-1208",
-      "color": "White",
-      "status": "Active",
-    },
-  ];
 
   Color getStatusColor(String status) {
     switch (status) {
@@ -103,6 +89,17 @@ class _VehiclesPageViewState extends State<VehiclesPageView> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    context.read<VehicleBloc>().add(
+      VehicleList(_searchController.text, offset.toString()),
+    );
+    setState(() {
+      vehicleLoad = true;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final isTablet = MediaQuery.of(context).size.width >= 600;
     Widget mainContainer() {
@@ -131,6 +128,18 @@ class _VehiclesPageViewState extends State<VehiclesPageView> {
                   borderSide: BorderSide.none,
                 ),
               ),
+              onChanged: (value) {
+                _searchController
+                  ..text = (value)
+                  ..selection = TextSelection.collapsed(
+                    offset: _searchController.text.length,
+                  );
+                setState(() {
+                  context.read<VehicleBloc>().add(
+                    VehicleList(_searchController.text, offset.toString()),
+                  );
+                });
+              },
             ),
             const SizedBox(height: 16),
 
@@ -162,15 +171,39 @@ class _VehiclesPageViewState extends State<VehiclesPageView> {
               children: [
                 OutlinedButton(
                   onPressed: currentPage > 1
-                      ? () => setState(() => currentPage--)
+                      ? () {
+                          setState(() {
+                            currentPage--;
+                            offset = (currentPage - 1) * limit;
+                          });
+                          context.read<VehicleBloc>().add(
+                            VehicleList(
+                              _searchController.text,
+                              offset.toString(),
+                            ),
+                          );
+                        }
                       : null,
                   child: const Text("Prev"),
                 ),
                 Text(
-                  "Showing 1–${vehicle.length} of ${vehicle.length}",
+                  "Showing $currentPage–${getAllVehiclesModel.result?.items?.length} of ${getAllVehiclesModel.result?.items?.length}",
                   style: const TextStyle(color: blackColor54),
                 ),
-                OutlinedButton(onPressed: () {}, child: const Text("Next")),
+
+                // Next button
+                OutlinedButton(
+                  onPressed: () {
+                    setState(() {
+                      currentPage++;
+                      offset = (currentPage - 1) * limit;
+                    });
+                    context.read<VehicleBloc>().add(
+                      VehicleList(_searchController.text, offset.toString()),
+                    );
+                  },
+                  child: const Text("Next"),
+                ),
               ],
             ),
           ],
@@ -215,37 +248,28 @@ class _VehiclesPageViewState extends State<VehiclesPageView> {
           ),
         ],
       ),
-      body: BlocBuilder<DemoBloc, dynamic>(
+      body: BlocBuilder<VehicleBloc, dynamic>(
         buildWhen: ((previous, current) {
-          //            if (current is PostLoginModel) {
-          //              postLoginModel = current;
-          //              if (postLoginModel.success == true) {
-          //                setState(() {
-          //                  loginLoad = false;
-          //                });
-          //                showToast('${postLoginModel.message}', context, color: true);
-          //                if (postLoginModel.user!.role == "OPERATOR") {
-          //                  Navigator.of(context).pushAndRemoveUntil(
-          //                      MaterialPageRoute(
-          //                          builder: (context) => const DashBoardScreen(
-          //                                selectTab: 0,
-          //                              )),
-          //                      (Route<dynamic> route) => false);
-          //                } else {
-          //                  showToast("Please Login Admin in Web", context, color: false);
-          //                }
-          //              } else {
-          //                final errorMsg =
-          //                    postLoginModel.errorResponse?.errors?.first.message ??
-          //                        postLoginModel.message ??
-          //                        "Login failed. Please try again.";
-          //                showToast(errorMsg, context, color: false);
-          //                setState(() {
-          //                  loginLoad = false;
-          //                });
-          //              }
-          //              return true;
-          //            }
+          if (current is GetAllVehiclesModel) {
+            getAllVehiclesModel = current;
+            if (getAllVehiclesModel.success == true) {
+              setState(() {
+                vehicleLoad = false;
+              });
+            } else if (getAllVehiclesModel.errorResponse != null) {
+              debugPrint(
+                "Error: ${getAllVehiclesModel.errorResponse?.message}",
+              );
+              setState(() {
+                vehicleLoad = false;
+              });
+            }
+            if (getAllVehiclesModel.errorResponse?.isUnauthorized == true) {
+              _handle401Error();
+              return true;
+            }
+            return true;
+          }
           return false;
         }),
         builder: (context, dynamic) {
@@ -255,161 +279,199 @@ class _VehiclesPageViewState extends State<VehiclesPageView> {
     );
   }
 
+  void _handle401Error() async {
+    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    await sharedPreferences.remove("token");
+    await sharedPreferences.clear();
+    showToast("Session expired. Please login again.", context, color: false);
+
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => LoginScreen()),
+      (Route<dynamic> route) => false,
+    );
+  }
+
   // 🔹 Tablet View => DataTable Layout
   Widget _buildScrollableTable() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        width: 800, // Set a wider width to allow scroll
-        child: SingleChildScrollView(
-          scrollDirection: Axis.vertical,
-          child: DataTable(
-            headingRowColor: WidgetStateProperty.all(greyColor.shade200),
-            columns: const [
-              DataColumn(label: Text('MAKE')),
-              DataColumn(label: Text('MODEL')),
-              DataColumn(label: Text('REGISTRATION NUMBER')),
-              DataColumn(label: Text('COLOR')),
-              DataColumn(label: Text('STATUS')),
-              DataColumn(label: Text('ACTIONS')),
-            ],
-            rows: vehicle.map((job) {
-              return DataRow(
-                cells: [
-                  DataCell(Text(job['make']!)),
-                  DataCell(Text(job['model']!)),
-                  DataCell(Text(job['regNo']!)),
-                  DataCell(Text(job['color']!)),
-                  DataCell(_statusBadge(job['status']!)),
-                  DataCell(
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              isEdit = true;
-                              _showAddEditVehiclesDialog(context);
-                            });
-                          },
-                          child: Icon(
-                            Icons.edit,
-                            color: appSecondaryColor.withOpacity(0.7),
-                            size: 20,
+    return vehicleLoad
+        ? Container(
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).size.height * 0.05,
+            ),
+            alignment: Alignment.center,
+            child: const SpinKitFadingCube(color: appPrimaryColor, size: 30),
+          )
+        : (getAllVehiclesModel.result?.items?.isEmpty ?? true)
+        ? Center(
+            child: Text(
+              _searchController.text.trim().isNotEmpty
+                  ? 'No Vehicles found'
+                  : 'No Vehicles Added yet',
+            ),
+          )
+        : SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: 800, // Set a wider width to allow scroll
+              child: SingleChildScrollView(
+                scrollDirection: Axis.vertical,
+                child: DataTable(
+                  columnSpacing: 30,
+                  headingRowColor: WidgetStateProperty.all(greyColor.shade200),
+                  columns: const [
+                    DataColumn(label: Text('MAKE')),
+                    DataColumn(label: Text('MODEL')),
+                    DataColumn(label: Text('REGISTRATION NUMBER')),
+                    DataColumn(label: Text('COLOR')),
+                    DataColumn(label: Text('STATUS')),
+                    DataColumn(label: Text('ACTIONS')),
+                  ],
+                  rows: (getAllVehiclesModel.result?.items ?? []).map((job) {
+                    return DataRow(
+                      cells: [
+                        DataCell(Text("${job.make}")),
+                        DataCell(Text("${job.model}")),
+                        DataCell(Text("${job.registrationNumber}")),
+                        DataCell(Text("${job.color}")),
+                        DataCell(
+                          _statusBadge(
+                            job.isActive == true ? "Active" : "InActive",
+                          ),
+                        ),
+                        DataCell(
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    isEdit = true;
+                                    _showAddEditVehiclesDialog(context);
+                                  });
+                                },
+                                child: Icon(
+                                  Icons.edit,
+                                  color: appSecondaryColor.withOpacity(0.7),
+                                  size: 20,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
-                    ),
-                  ),
-                ],
-              );
-            }).toList(),
-          ),
-        ),
-      ),
-    );
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+          );
   }
 
   // 🔹 Mobile View => ListView Layout
   Widget _buildListView() {
-    return ListView.builder(
-      itemCount: vehicle.length,
-      itemBuilder: (context, index) {
-        final job = vehicle[index];
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      job["make"],
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          "REGISTRATION NUMBER : ",
-                          style: MyTextStyle.f13(
-                            blackColor,
-                            weight: FontWeight.bold,
-                          ),
-                        ),
-                        Text("${job["regNo"]}"),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        Text(
-                          "MODEL : ",
-                          style: MyTextStyle.f13(
-                            blackColor,
-                            weight: FontWeight.bold,
-                          ),
-                        ),
-                        Text("${job["model"]}"),
-                      ],
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Text(
-                      "COLOR : ",
-                      style: MyTextStyle.f13(
-                        blackColor,
-                        weight: FontWeight.bold,
-                      ),
-                    ),
-                    Text("${job["color"]}"),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(children: [_statusBadge(job["status"])]),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          isEdit = true;
-                          _showAddEditVehiclesDialog(context);
-                        });
-                      },
-                      child: Icon(
-                        Icons.edit,
-                        color: appSecondaryColor.withOpacity(0.7),
-                        size: 20,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+    return vehicleLoad
+        ? Container(
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).size.height * 0.05,
             ),
-          ),
-        );
-      },
-    );
+            alignment: Alignment.center,
+            child: const SpinKitFadingCube(color: appPrimaryColor, size: 30),
+          )
+        : (getAllVehiclesModel.result?.items?.isEmpty ?? true)
+        ? Center(
+            child: Text(
+              _searchController.text.trim().isNotEmpty
+                  ? 'No Vehicles found'
+                  : 'No Vehicles Added yet',
+            ),
+          )
+        : ListView.builder(
+            itemCount: getAllVehiclesModel.result?.items!.length,
+            itemBuilder: (context, index) {
+              final job = getAllVehiclesModel.result?.items![index];
+              return Card(
+                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "${job?.make} (${job?.color})",
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Text(
+                            "REGISTRATION NUMBER : ",
+                            style: MyTextStyle.f13(
+                              blackColor,
+                              weight: FontWeight.bold,
+                            ),
+                          ),
+                          Text("${job?.registrationNumber}"),
+                        ],
+                      ),
+
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Text(
+                            "MODEL : ",
+                            style: MyTextStyle.f13(
+                              blackColor,
+                              weight: FontWeight.bold,
+                            ),
+                          ),
+                          Text("${job?.model}"),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          _statusBadge(
+                            job?.isActive == true ? "Active" : "InActive",
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                isEdit = true;
+                                _showAddEditVehiclesDialog(context);
+                              });
+                            },
+                            child: Icon(
+                              Icons.edit,
+                              color: appSecondaryColor.withOpacity(0.7),
+                              size: 20,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
   }
 
   // 🔹 Reusable status badge

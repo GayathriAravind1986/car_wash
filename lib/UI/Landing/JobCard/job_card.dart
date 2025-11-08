@@ -1,8 +1,14 @@
-import 'package:carwash/Bloc/demo/demo_bloc.dart';
+import 'package:carwash/Alertbox/snackBarAlert.dart';
+import 'package:carwash/Bloc/JobCards/job_card_bloc.dart';
+import 'package:carwash/ModelClass/JobCard/getAllJobCardModel.dart';
 import 'package:carwash/Reusable/color.dart';
+import 'package:carwash/Reusable/date_formatter.dart';
+import 'package:carwash/UI/Authentication/login_screen.dart';
 import 'package:carwash/UI/Landing/JobCard/add_job_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class JobCardsPage extends StatelessWidget {
   const JobCardsPage({super.key});
@@ -10,7 +16,7 @@ class JobCardsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => DemoBloc(),
+      create: (_) => JobCardBloc(),
       child: const JobCardsPageView(),
     );
   }
@@ -24,130 +30,12 @@ class JobCardsPageView extends StatefulWidget {
 }
 
 class _JobCardsPageViewState extends State<JobCardsPageView> {
+  GetAllJobCardModel getAllJobCardModel = GetAllJobCardModel();
   final TextEditingController _searchController = TextEditingController();
   int currentPage = 1;
-
-  final List<Map<String, dynamic>> jobCards = [
-    {
-      "regNo": "TN76BY8986",
-      "totalCost": "₹500.00",
-      "jobStatus": "pending",
-      "invoiceStatus": "paid",
-      "created": "30/10/2025",
-    },
-    {
-      "regNo": "TN76BY8986",
-      "totalCost": "₹12500.00",
-      "jobStatus": "pending",
-      "invoiceStatus": "partially-paid",
-      "created": "30/10/2025",
-    },
-    {
-      "regNo": "TN-51-MP-1208",
-      "totalCost": "₹650.00",
-      "jobStatus": "pending",
-      "invoiceStatus": "paid",
-      "created": "28/10/2025",
-    },
-    {
-      "regNo": "TN-51-MP-1208",
-      "totalCost": "₹150.00",
-      "jobStatus": "in-progress",
-      "invoiceStatus": "paid",
-      "created": "28/10/2025",
-    },
-    {
-      "regNo": "TN-51-MP-1208",
-      "totalCost": "₹150.00",
-      "jobStatus": "in-progress",
-      "invoiceStatus": "paid",
-      "created": "28/10/2025",
-    },
-    {
-      "regNo": "TN-51-MP-1208",
-      "totalCost": "₹150.00",
-      "jobStatus": "in-progress",
-      "invoiceStatus": "paid",
-      "created": "28/10/2025",
-    },
-    {
-      "regNo": "TN-51-MP-1208",
-      "totalCost": "₹150.00",
-      "jobStatus": "in-progress",
-      "invoiceStatus": "paid",
-      "created": "28/10/2025",
-    },
-    {
-      "regNo": "TN-51-MP-1208",
-      "totalCost": "₹150.00",
-      "jobStatus": "in-progress",
-      "invoiceStatus": "paid",
-      "created": "28/10/2025",
-    },
-    {
-      "regNo": "TN-51-MP-1208",
-      "totalCost": "₹150.00",
-      "jobStatus": "in-progress",
-      "invoiceStatus": "paid",
-      "created": "28/10/2025",
-    },
-    {
-      "regNo": "TN-51-MP-1208",
-      "totalCost": "₹150.00",
-      "jobStatus": "in-progress",
-      "invoiceStatus": "paid",
-      "created": "28/10/2025",
-    },
-    {
-      "regNo": "TN-51-MP-1208",
-      "totalCost": "₹150.00",
-      "jobStatus": "in-progress",
-      "invoiceStatus": "paid",
-      "created": "28/10/2025",
-    },
-    {
-      "regNo": "TN-51-MP-1208",
-      "totalCost": "₹150.00",
-      "jobStatus": "in-progress",
-      "invoiceStatus": "paid",
-      "created": "28/10/2025",
-    },
-    {
-      "regNo": "TN-51-MP-1208",
-      "totalCost": "₹150.00",
-      "jobStatus": "in-progress",
-      "invoiceStatus": "paid",
-      "created": "28/10/2025",
-    },
-    {
-      "regNo": "TN-51-MP-1208",
-      "totalCost": "₹150.00",
-      "jobStatus": "in-progress",
-      "invoiceStatus": "paid",
-      "created": "28/10/2025",
-    },
-    {
-      "regNo": "TN-51-MP-1208",
-      "totalCost": "₹150.00",
-      "jobStatus": "in-progress",
-      "invoiceStatus": "paid",
-      "created": "28/10/2025",
-    },
-    {
-      "regNo": "TN-51-MP-1208",
-      "totalCost": "₹150.00",
-      "jobStatus": "in-progress",
-      "invoiceStatus": "paid",
-      "created": "28/10/2025",
-    },
-    {
-      "regNo": "TN-51-MP-1208",
-      "totalCost": "₹150.00",
-      "jobStatus": "in-progress",
-      "invoiceStatus": "paid",
-      "created": "28/10/2025",
-    },
-  ];
+  int offset = 0;
+  int limit = 10;
+  bool jobLoad = false;
 
   Color getStatusColor(String status) {
     switch (status.toLowerCase()) {
@@ -180,6 +68,17 @@ class _JobCardsPageViewState extends State<JobCardsPageView> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    context.read<JobCardBloc>().add(
+      JobCardList(_searchController.text, offset.toString()),
+    );
+    setState(() {
+      jobLoad = true;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final isTablet = MediaQuery.of(context).size.width >= 600;
 
@@ -209,6 +108,18 @@ class _JobCardsPageViewState extends State<JobCardsPageView> {
                   borderSide: BorderSide.none,
                 ),
               ),
+              onChanged: (value) {
+                _searchController
+                  ..text = (value)
+                  ..selection = TextSelection.collapsed(
+                    offset: _searchController.text.length,
+                  );
+                setState(() {
+                  context.read<JobCardBloc>().add(
+                    JobCardList(_searchController.text, offset.toString()),
+                  );
+                });
+              },
             ),
             const SizedBox(height: 16),
 
@@ -240,15 +151,39 @@ class _JobCardsPageViewState extends State<JobCardsPageView> {
               children: [
                 OutlinedButton(
                   onPressed: currentPage > 1
-                      ? () => setState(() => currentPage--)
+                      ? () {
+                          setState(() {
+                            currentPage--;
+                            offset = (currentPage - 1) * limit;
+                          });
+                          context.read<JobCardBloc>().add(
+                            JobCardList(
+                              _searchController.text,
+                              offset.toString(),
+                            ),
+                          );
+                        }
                       : null,
                   child: const Text("Prev"),
                 ),
                 Text(
-                  "Showing 1–${jobCards.length} of ${jobCards.length}",
+                  "Showing $currentPage–${getAllJobCardModel.result?.length} of ${getAllJobCardModel.result?.length}",
                   style: const TextStyle(color: blackColor54),
                 ),
-                OutlinedButton(onPressed: () {}, child: const Text("Next")),
+
+                // Next button
+                OutlinedButton(
+                  onPressed: () {
+                    setState(() {
+                      currentPage++;
+                      offset = (currentPage - 1) * limit;
+                    });
+                    context.read<JobCardBloc>().add(
+                      JobCardList(_searchController.text, offset.toString()),
+                    );
+                  },
+                  child: const Text("Next"),
+                ),
               ],
             ),
           ],
@@ -295,37 +230,26 @@ class _JobCardsPageViewState extends State<JobCardsPageView> {
           ),
         ],
       ),
-      body: BlocBuilder<DemoBloc, dynamic>(
+      body: BlocBuilder<JobCardBloc, dynamic>(
         buildWhen: ((previous, current) {
-          //            if (current is PostLoginModel) {
-          //              postLoginModel = current;
-          //              if (postLoginModel.success == true) {
-          //                setState(() {
-          //                  loginLoad = false;
-          //                });
-          //                showToast('${postLoginModel.message}', context, color: true);
-          //                if (postLoginModel.user!.role == "OPERATOR") {
-          //                  Navigator.of(context).pushAndRemoveUntil(
-          //                      MaterialPageRoute(
-          //                          builder: (context) => const DashBoardScreen(
-          //                                selectTab: 0,
-          //                              )),
-          //                      (Route<dynamic> route) => false);
-          //                } else {
-          //                  showToast("Please Login Admin in Web", context, color: false);
-          //                }
-          //              } else {
-          //                final errorMsg =
-          //                    postLoginModel.errorResponse?.errors?.first.message ??
-          //                        postLoginModel.message ??
-          //                        "Login failed. Please try again.";
-          //                showToast(errorMsg, context, color: false);
-          //                setState(() {
-          //                  loginLoad = false;
-          //                });
-          //              }
-          //              return true;
-          //            }
+          if (current is GetAllJobCardModel) {
+            getAllJobCardModel = current;
+            if (getAllJobCardModel.success == true) {
+              setState(() {
+                jobLoad = false;
+              });
+            } else if (getAllJobCardModel.errorResponse != null) {
+              debugPrint("Error: ${getAllJobCardModel.errorResponse?.message}");
+              setState(() {
+                jobLoad = false;
+              });
+            }
+            if (getAllJobCardModel.errorResponse?.isUnauthorized == true) {
+              _handle401Error();
+              return true;
+            }
+            return true;
+          }
           return false;
         }),
         builder: (context, dynamic) {
@@ -335,122 +259,176 @@ class _JobCardsPageViewState extends State<JobCardsPageView> {
     );
   }
 
+  void _handle401Error() async {
+    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    await sharedPreferences.remove("token");
+    await sharedPreferences.clear();
+    showToast("Session expired. Please login again.", context, color: false);
+
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => LoginScreen()),
+      (Route<dynamic> route) => false,
+    );
+  }
+
   // 🔹 Tablet View => DataTable Layout
   Widget _buildScrollableTable() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        width: 800, // Set a wider width to allow scroll
-        child: SingleChildScrollView(
-          scrollDirection: Axis.vertical,
-          child: DataTable(
-            headingRowColor: WidgetStateProperty.all(greyColor.shade200),
-            columns: const [
-              DataColumn(label: Text('Reg. No')),
-              DataColumn(label: Text('Total Cost')),
-              DataColumn(label: Text('Job Status')),
-              DataColumn(label: Text('Invoice Status')),
-              DataColumn(label: Text('Created')),
-              DataColumn(label: Text('Actions')),
-            ],
-            rows: jobCards.map((job) {
-              return DataRow(
-                cells: [
-                  DataCell(Text(job['regNo']!)),
-                  DataCell(Text(job['totalCost']!)),
-                  DataCell(_statusBadge(job['jobStatus']!)),
-                  DataCell(_statusBadge(job['invoiceStatus']!)),
-                  DataCell(Text(job['created']!)),
-                  DataCell(
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.edit,
-                          color: appSecondaryColor.withOpacity(0.7),
-                          size: 20,
-                        ),
-                        SizedBox(width: 8),
-                        Icon(
-                          Icons.print,
-                          color: appSecondaryColor.withOpacity(0.7),
+    return jobLoad
+        ? Container(
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).size.height * 0.05,
+            ),
+            alignment: Alignment.center,
+            child: const SpinKitFadingCube(color: appPrimaryColor, size: 30),
+          )
+        : (getAllJobCardModel.result?.isEmpty ?? true)
+        ? Center(
+            child: Text(
+              _searchController.text.trim().isNotEmpty
+                  ? 'No records found'
+                  : 'No JobCards Added yet',
+            ),
+          )
+        : SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: 800, // Set a wider width to allow scroll
+              child: SingleChildScrollView(
+                scrollDirection: Axis.vertical,
+                child: DataTable(
+                  columnSpacing: 30,
+                  headingRowColor: WidgetStateProperty.all(greyColor.shade200),
+                  columns: const [
+                    DataColumn(label: Text('Reg. No')),
+                    DataColumn(label: Text('Total Cost')),
+                    DataColumn(label: Text('Job Status')),
+                    DataColumn(label: Text('Invoice Status')),
+                    DataColumn(label: Text('Created')),
+                    DataColumn(label: Text('Actions')),
+                  ],
+                  rows: (getAllJobCardModel.result ?? []).map((job) {
+                    return DataRow(
+                      cells: [
+                        DataCell(Text("${job.registrationNumber}")),
+                        DataCell(Text("${job.totalCost}")),
+                        DataCell(_statusBadge("${job.status}")),
+                        DataCell(_statusBadge("${job.invoiceStatus}")),
+                        DataCell(Text(formatDate("${job.createdAt}"))),
+                        DataCell(
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.edit,
+                                color: appSecondaryColor.withOpacity(0.7),
+                                size: 20,
+                              ),
+                              SizedBox(width: 8),
+                              Icon(
+                                Icons.print,
+                                color: appSecondaryColor.withOpacity(0.7),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
-                    ),
-                  ),
-                ],
-              );
-            }).toList(),
-          ),
-        ),
-      ),
-    );
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+          );
   }
 
   // 🔹 Mobile View => ListView Layout
   Widget _buildListView() {
-    return ListView.builder(
-      itemCount: jobCards.length,
-      itemBuilder: (context, index) {
-        final job = jobCards[index];
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      job["regNo"],
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    Text(
-                      job["created"],
-                      style: const TextStyle(color: greyColor, fontSize: 12),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text("Total Cost: ${job["totalCost"]}"),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    _statusBadge(job["jobStatus"]),
-                    const SizedBox(width: 6),
-                    _statusBadge(job["invoiceStatus"]),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Icon(
-                      Icons.edit,
-                      color: appSecondaryColor.withOpacity(0.7),
-                      size: 20,
-                    ),
-                    SizedBox(width: 8),
-                    Icon(
-                      Icons.print,
-                      color: appSecondaryColor.withOpacity(0.7),
-                    ),
-                  ],
-                ),
-              ],
+    return jobLoad
+        ? Container(
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).size.height * 0.05,
             ),
-          ),
-        );
-      },
-    );
+            alignment: Alignment.center,
+            child: const SpinKitFadingCube(color: appPrimaryColor, size: 30),
+          )
+        : (getAllJobCardModel.result?.isEmpty ?? true)
+        ? Center(
+            child: Text(
+              _searchController.text.trim().isNotEmpty
+                  ? 'No records found'
+                  : 'No JobCards Added yet',
+            ),
+          )
+        : ListView.builder(
+            itemCount: getAllJobCardModel.result!.length,
+            itemBuilder: (context, index) {
+              final job = getAllJobCardModel.result![index];
+              return Card(
+                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "${job.registrationNumber}",
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          Text(
+                            formatDate("${job.createdAt}"),
+                            style: const TextStyle(
+                              color: greyColor,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text("Total Cost: ${job.totalCost}"),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Text("Status: "),
+                          _statusBadge("${job.status}"),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Text("Invoice Status: "),
+                          _statusBadge("${job.invoiceStatus}"),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Icon(
+                            Icons.edit,
+                            color: appSecondaryColor.withOpacity(0.7),
+                            size: 20,
+                          ),
+                          SizedBox(width: 8),
+                          Icon(
+                            Icons.print,
+                            color: appSecondaryColor.withOpacity(0.7),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
   }
 
   // 🔹 Reusable status badge

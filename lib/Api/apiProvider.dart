@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:carwash/ModelClass/Authentication/postLoginModel.dart';
 import 'package:carwash/ModelClass/Customer/getAllCustomerModel.dart';
+import 'package:carwash/ModelClass/JobCard/getAllJobCardModel.dart';
+import 'package:carwash/ModelClass/Vehicle/getAllVehiclesModel.dart';
 import 'package:carwash/Reusable/constant.dart';
 import 'package:dio/dio.dart';
 import 'package:carwash/Bloc/Response/errorResponse.dart';
@@ -32,14 +34,12 @@ class ApiProvider {
         data: json.encode(dataMap),
         options: Options(headers: {"Content-Type": "application/json"}),
       );
-      debugPrint("🟢 RESPONSE CODE: ${response.statusCode}");
-      debugPrint("🟢 RESPONSE DATA: ${response.data}");
       if (response.statusCode == 200 && response.data != null) {
-        // ✅ Login success
         if (response.data['success'] == true) {
           final postLoginResponse = PostLoginModel.fromJson(response.data);
 
           final prefs = await SharedPreferences.getInstance();
+          prefs.setString("token", postLoginResponse.token.toString());
           prefs.setString(
             "firstName",
             postLoginResponse.user!.firstName.toString(),
@@ -60,63 +60,52 @@ class ApiProvider {
             );
         }
       }
-
-      // ✅ Handle unauthorized (401) or other errors with message
       if (response.statusCode == 401 && response.data != null) {
         return PostLoginModel()
           ..errorResponse = ErrorResponse(
             message: response.data['message'] ?? "Invalid credentials.",
           );
       }
-      //✅ Handle unauthorized (500) or other errors with message
       if (response.statusCode == 500 && response.data != null) {
         return PostLoginModel()
           ..errorResponse = ErrorResponse(
             message: response.data['message'] ?? "Invalid credentials.",
           );
       }
-      // ✅ Unexpected
       return PostLoginModel()
         ..errorResponse = ErrorResponse(message: "Unexpected error occurred.");
     } on DioException catch (dioError) {
-      // debugPrint("🔴 DIO ERROR TYPE: ${dioError.type}");
-      // debugPrint("🔴 DIO ERROR MESSAGE: ${dioError.message}");
       final errorResponse = handleError(dioError);
       return PostLoginModel()..errorResponse = errorResponse;
     } catch (error) {
-      // debugPrint("🔴 GENERAL ERROR: $error");
       return PostLoginModel()..errorResponse = handleError(error);
     }
   }
 
   /// Customer
   /// Customer List - API Integration
-  Future<GetAllCustomerModel> getAllCustomerAPI() async {
+  Future<GetAllCustomerModel> getAllCustomerAPI(
+    String? searchKey,
+    String? offset,
+  ) async {
     SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
-    var userId = sharedPreferences.getString("userId");
+    var token = sharedPreferences.getString("token");
     try {
       var dio = Dio();
-      debugPrint("URL: ${Constants.baseUrl}customers?offset=0&limit=10");
       var response = await dio.request(
-        '${Constants.baseUrl}customers?offset=0&limit=10',
+        '${Constants.baseUrl}customers?search=$searchKey&offset=$offset&limit=10',
         options: Options(
           method: 'GET',
           headers: {
             "Content-Type": "application/json",
-            if (userId != null)
-              "Authorization": "Bearer $userId", // 👈 important
+            if (token != null) "Authorization": "Bearer $token",
           },
         ),
       );
-      debugPrint("🟢 RESPONSE CODE: ${response.statusCode}");
       if (response.statusCode == 200 && response.data != null) {
-        debugPrint("🟢 RESPONSE CODE inside: ${response.statusCode}");
         if (response.data['success'] == true) {
           GetAllCustomerModel getAllCustomerResponse =
               GetAllCustomerModel.fromJson(response.data);
-          debugPrint(
-            "✅ Parsed items count: ${getAllCustomerResponse.result?.items?.length}",
-          );
           return getAllCustomerResponse;
         }
       } else {
@@ -137,6 +126,103 @@ class ApiProvider {
     } catch (error) {
       final errorResponse = handleError(error);
       return GetAllCustomerModel()..errorResponse = errorResponse;
+    }
+  }
+
+  /// Job Cards
+  /// JobCard API Integration
+  Future<GetAllJobCardModel> getAllJobCardAPI(
+    String? searchKey,
+    String? offset,
+  ) async {
+    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    var token = sharedPreferences.getString("token");
+    try {
+      var dio = Dio();
+      var response = await dio.request(
+        '${Constants.baseUrl}jobcards/list?search=$searchKey&offset=$offset&limit=10',
+        options: Options(
+          method: 'GET',
+          headers: {
+            "Content-Type": "application/json",
+            if (token != null) "Authorization": "Bearer $token",
+          },
+        ),
+      );
+      if (response.statusCode == 200 && response.data != null) {
+        if (response.data['success'] == true) {
+          GetAllJobCardModel getAllJobCardResponse =
+              GetAllJobCardModel.fromJson(response.data);
+          return getAllJobCardResponse;
+        }
+      } else {
+        return GetAllJobCardModel()
+          ..errorResponse = ErrorResponse(
+            message: "Error: ${response.data['message'] ?? 'Unknown error'}",
+            statusCode: response.statusCode,
+          );
+      }
+      return GetAllJobCardModel()
+        ..errorResponse = ErrorResponse(
+          message: "Unexpected error occurred.",
+          statusCode: 500,
+        );
+    } on DioException catch (dioError) {
+      final errorResponse = handleError(dioError);
+      return GetAllJobCardModel()..errorResponse = errorResponse;
+    } catch (error) {
+      final errorResponse = handleError(error);
+      return GetAllJobCardModel()..errorResponse = errorResponse;
+    }
+  }
+
+  /// Vehicles
+  /// Vehicles API Integration
+  Future<GetAllVehiclesModel> getAllVehicleAPI(
+    String? searchKey,
+    String? offset,
+  ) async {
+    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    var token = sharedPreferences.getString("token");
+    try {
+      var dio = Dio();
+      debugPrint(
+        "URL: ${Constants.baseUrl}vehicles?search=$searchKey&offset=$offset&limit=10",
+      );
+      var response = await dio.request(
+        '${Constants.baseUrl}vehicles?search=$searchKey&offset=$offset&limit=10',
+        options: Options(
+          method: 'GET',
+          headers: {
+            "Content-Type": "application/json",
+            if (token != null) "Authorization": "Bearer $token",
+          },
+        ),
+      );
+      if (response.statusCode == 200 && response.data != null) {
+        if (response.data['success'] == true) {
+          GetAllVehiclesModel getAllVehiclesResponse =
+              GetAllVehiclesModel.fromJson(response.data);
+          return getAllVehiclesResponse;
+        }
+      } else {
+        return GetAllVehiclesModel()
+          ..errorResponse = ErrorResponse(
+            message: "Error: ${response.data['message'] ?? 'Unknown error'}",
+            statusCode: response.statusCode,
+          );
+      }
+      return GetAllVehiclesModel()
+        ..errorResponse = ErrorResponse(
+          message: "Unexpected error occurred.",
+          statusCode: 500,
+        );
+    } on DioException catch (dioError) {
+      final errorResponse = handleError(dioError);
+      return GetAllVehiclesModel()..errorResponse = errorResponse;
+    } catch (error) {
+      final errorResponse = handleError(error);
+      return GetAllVehiclesModel()..errorResponse = errorResponse;
     }
   }
 

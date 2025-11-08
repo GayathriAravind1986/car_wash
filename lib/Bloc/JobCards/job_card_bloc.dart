@@ -1,12 +1,12 @@
 import 'package:carwash/Api/apiProvider.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-abstract class CustomerEvent {}
+abstract class JobCardEvent {}
 
-class CustomerList extends CustomerEvent {
+class JobCardList extends JobCardEvent {
   String searchKey;
   String offset;
-  CustomerList(this.searchKey, this.offset);
+  JobCardList(this.searchKey, this.offset);
 }
 
 // class FoodProductItem extends CustomerEvent {
@@ -43,17 +43,17 @@ class CustomerList extends CustomerEvent {
 //
 // class StockDetails extends FoodCategoryEvent {}
 
-class CustomerBloc extends Bloc<CustomerEvent, dynamic> {
-  CustomerBloc() : super(dynamic) {
-    on<CustomerList>((event, emit) async {
+class JobCardBloc extends Bloc<JobCardEvent, dynamic> {
+  JobCardBloc() : super(dynamic) {
+    on<JobCardList>((event, emit) async {
       await ApiProvider()
-          .getAllCustomerAPI(event.searchKey, event.offset)
+          .getAllJobCardAPI(event.searchKey, event.offset)
           .then((value) {
-            emit(value);
-          })
+        emit(value);
+      })
           .catchError((error) {
-            emit(error);
-          });
+        emit(error);
+      });
     });
     //   on<FoodProductItem>((event, emit) async {
     //     await ApiProvider()

@@ -109,7 +109,7 @@ showLogoutDialog(BuildContext context) {
                   onPressed: () async {
                     SharedPreferences sharedPreference =
                         await SharedPreferences.getInstance();
-                    //await sharedPreference.remove('token');
+                    await sharedPreference.remove('token');
                     await sharedPreference.remove('role');
                     await sharedPreference.remove('userId');
                     Navigator.pushAndRemoveUntil(

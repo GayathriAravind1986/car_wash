@@ -1,11 +1,14 @@
+import 'package:carwash/Alertbox/snackBarAlert.dart';
 import 'package:carwash/Bloc/Customer/customer_bloc.dart';
 import 'package:carwash/ModelClass/Customer/getAllCustomerModel.dart';
 import 'package:carwash/Reusable/color.dart';
+import 'package:carwash/UI/Authentication/login_screen.dart';
 import 'package:carwash/UI/Landing/Customer/add_customer.dart';
 import 'package:carwash/UI/Landing/Customer/edit_customer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class CustomersPage extends StatelessWidget {
   const CustomersPage({super.key});
@@ -29,27 +32,11 @@ class CustomersPageView extends StatefulWidget {
 class _CustomersPageViewState extends State<CustomersPageView> {
   GetAllCustomerModel getAllCustomerModel = GetAllCustomerModel();
   final TextEditingController _searchController = TextEditingController();
+  int offset = 0;
+  int limit = 10;
   int currentPage = 1;
   bool? isEdit = false;
   bool customerLoad = false;
-  final List<Map<String, dynamic>> customer = [
-    {"name": "Pradeep", "contact": "9780765435", "status": "Active"},
-    {"name": "Vinoth", "contact": "9996780654", "status": "Active"},
-    {"name": "Daniel", "contact": "9780765890", "status": "InActive"},
-    {"name": "Francis", "contact": "9980735435", "status": "Active"},
-    {"name": "Francis", "contact": "9980735435", "status": "Active"},
-    {"name": "Francis", "contact": "9980735435", "status": "Active"},
-    {"name": "Francis", "contact": "9980735435", "status": "Active"},
-    {"name": "Francis", "contact": "9980735435", "status": "Active"},
-    {"name": "Francis", "contact": "9980735435", "status": "Active"},
-    {"name": "Francis", "contact": "9980735435", "status": "Active"},
-    {"name": "Francis", "contact": "9980735435", "status": "Active"},
-    {"name": "Francis", "contact": "9980735435", "status": "Active"},
-    {"name": "Francis", "contact": "9980735435", "status": "Active"},
-    {"name": "Francis", "contact": "9980735435", "status": "Active"},
-    {"name": "Francis", "contact": "9980735435", "status": "Active"},
-    {"name": "Francis", "contact": "9980735435", "status": "Active"},
-  ];
 
   Color getStatusColor(String status) {
     switch (status) {
@@ -190,7 +177,12 @@ class _CustomersPageViewState extends State<CustomersPageView> {
   @override
   void initState() {
     super.initState();
-    context.read<CustomerBloc>().add(CustomerList());
+    context.read<CustomerBloc>().add(
+      CustomerList(_searchController.text, offset.toString()),
+    );
+    setState(() {
+      customerLoad = true;
+    });
   }
 
   @override
@@ -222,6 +214,18 @@ class _CustomersPageViewState extends State<CustomersPageView> {
                   borderSide: BorderSide.none,
                 ),
               ),
+              onChanged: (value) {
+                _searchController
+                  ..text = (value)
+                  ..selection = TextSelection.collapsed(
+                    offset: _searchController.text.length,
+                  );
+                setState(() {
+                  context.read<CustomerBloc>().add(
+                    CustomerList(_searchController.text, offset.toString()),
+                  );
+                });
+              },
             ),
             const SizedBox(height: 16),
 
@@ -251,17 +255,42 @@ class _CustomersPageViewState extends State<CustomersPageView> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                // Prev button
                 OutlinedButton(
                   onPressed: currentPage > 1
-                      ? () => setState(() => currentPage--)
+                      ? () {
+                          setState(() {
+                            currentPage--;
+                            offset = (currentPage - 1) * limit;
+                          });
+                          context.read<CustomerBloc>().add(
+                            CustomerList(
+                              _searchController.text,
+                              offset.toString(),
+                            ),
+                          );
+                        }
                       : null,
                   child: const Text("Prev"),
                 ),
                 Text(
-                  "Showing 1–${getAllCustomerModel.result?.items!.length} of ${getAllCustomerModel.result?.items!.length}",
+                  "Showing $currentPage–${getAllCustomerModel.result?.items!.length} of ${getAllCustomerModel.result?.items!.length}",
                   style: const TextStyle(color: blackColor54),
                 ),
-                OutlinedButton(onPressed: () {}, child: const Text("Next")),
+
+                // Next button
+                OutlinedButton(
+                  onPressed: () {
+                    setState(() {
+                      currentPage++;
+                      offset = (currentPage - 1) * limit;
+                    });
+                    context.read<CustomerBloc>().add(
+                      CustomerList(_searchController.text, offset.toString()),
+                    );
+                  },
+                  child: const Text("Next"),
+                ),
               ],
             ),
           ],
@@ -311,10 +340,6 @@ class _CustomersPageViewState extends State<CustomersPageView> {
           if (current is GetAllCustomerModel) {
             getAllCustomerModel = current;
             if (getAllCustomerModel.success == true) {
-              debugPrint("customer result:${getAllCustomerModel.success}");
-              debugPrint(
-                "customer length:${getAllCustomerModel.result?.items?.length}",
-              );
               setState(() {
                 customerLoad = false;
               });
@@ -322,11 +347,14 @@ class _CustomersPageViewState extends State<CustomersPageView> {
               debugPrint(
                 "Error: ${getAllCustomerModel.errorResponse?.message}",
               );
+              setState(() {
+                customerLoad = false;
+              });
             }
-            // if (getCategoryModel.errorResponse?.isUnauthorized == true) {
-            //   _handle401Error();
-            //   return true;
-            // }
+            if (getAllCustomerModel.errorResponse?.isUnauthorized == true) {
+              _handle401Error();
+              return true;
+            }
             return true;
           }
           return false;
@@ -338,64 +366,96 @@ class _CustomersPageViewState extends State<CustomersPageView> {
     );
   }
 
+  void _handle401Error() async {
+    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    await sharedPreferences.remove("token");
+    await sharedPreferences.clear();
+    showToast("Session expired. Please login again.", context, color: false);
+
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => LoginScreen()),
+      (Route<dynamic> route) => false,
+    );
+  }
+
   // 🔹 Tablet View => DataTable Layout
   Widget _buildScrollableTable() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        width: 800, // Set a wider width to allow scroll
-        child: SingleChildScrollView(
-          scrollDirection: Axis.vertical,
-          child: DataTable(
-            headingRowColor: WidgetStateProperty.all(greyColor.shade200),
-            columns: const [
-              DataColumn(label: Text('NAME')),
-              DataColumn(label: Text('CONTACT')),
-              DataColumn(label: Text('STATUS')),
-              DataColumn(label: Text('ACTIONS')),
-            ],
-            rows: customer.map((job) {
-              return DataRow(
-                cells: [
-                  DataCell(Text(job['name']!)),
-                  DataCell(Text(job['contact']!)),
-                  DataCell(_statusBadge(job['status']!)),
-                  DataCell(
-                    Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              isEdit = true;
-                              _showAddEditCustomerDialog(context);
-                            });
-                          },
-                          child: Icon(
-                            Icons.edit,
-                            color: appSecondaryColor.withOpacity(0.7),
-                            size: 20,
+    return customerLoad
+        ? Container(
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).size.height * 0.05,
+            ),
+            alignment: Alignment.center,
+            child: const SpinKitFadingCube(color: appPrimaryColor, size: 30),
+          )
+        : (getAllCustomerModel.result?.items?.isEmpty ?? true)
+        ? Center(
+            child: Text(
+              _searchController.text.trim().isNotEmpty
+                  ? 'No records found'
+                  : 'No customer Added yet',
+            ),
+          )
+        : SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: 800, // Set a wider width to allow scroll
+              child: SingleChildScrollView(
+                scrollDirection: Axis.vertical,
+                child: DataTable(
+                  headingRowColor: WidgetStateProperty.all(greyColor.shade200),
+                  columns: const [
+                    DataColumn(label: Text('NAME')),
+                    DataColumn(label: Text('CONTACT')),
+                    DataColumn(label: Text('STATUS')),
+                    DataColumn(label: Text('ACTIONS')),
+                  ],
+                  rows: (getAllCustomerModel.result?.items ?? []).map((job) {
+                    return DataRow(
+                      cells: [
+                        DataCell(Text("${job.firstName} ${job.lastName}")),
+                        DataCell(Text("${job.phone}")),
+                        DataCell(
+                          _statusBadge(
+                            job.isActive == true ? "Active" : "InActive",
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: () {
-                            showCustomerVehiclesPopup(context);
-                          },
-                          child: Icon(
-                            Icons.remove_red_eye_outlined,
-                            color: appSecondaryColor.withOpacity(0.7),
+                        DataCell(
+                          Row(
+                            children: [
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    isEdit = true;
+                                    _showAddEditCustomerDialog(context);
+                                  });
+                                },
+                                child: Icon(
+                                  Icons.edit,
+                                  color: appSecondaryColor.withOpacity(0.7),
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: () {
+                                  showCustomerVehiclesPopup(context);
+                                },
+                                child: Icon(
+                                  Icons.remove_red_eye_outlined,
+                                  color: appSecondaryColor.withOpacity(0.7),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
-                    ),
-                  ),
-                ],
-              );
-            }).toList(),
-          ),
-        ),
-      ),
-    );
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+          );
   }
 
   // 🔹 Mobile View => ListView Layout
@@ -404,13 +464,19 @@ class _CustomersPageViewState extends State<CustomersPageView> {
     return customerLoad
         ? Container(
             padding: EdgeInsets.only(
-              top: MediaQuery.of(context).size.height * 0.2,
+              top: MediaQuery.of(context).size.height * 0.05,
             ),
             alignment: Alignment.center,
-            child: const SpinKitChasingDots(color: appPrimaryColor, size: 30),
+            child: const SpinKitFadingCube(color: appPrimaryColor, size: 30),
           )
         : (getAllCustomerModel.result?.items?.isEmpty ?? true)
-        ? const Center(child: Text('No customer Added yet'))
+        ? Center(
+            child: Text(
+              _searchController.text.trim().isNotEmpty
+                  ? 'No records found'
+                  : 'No customer Added yet',
+            ),
+          )
         : ListView.builder(
             itemCount: getAllCustomerModel.result?.items!.length,
             itemBuilder: (context, index) {
@@ -430,7 +496,7 @@ class _CustomersPageViewState extends State<CustomersPageView> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            "${job?.firstName}",
+                            "${job?.firstName} ${job?.lastName}",
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
