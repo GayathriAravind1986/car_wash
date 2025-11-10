@@ -1,38 +1,60 @@
-import 'package:carwash/Bloc/demo/demo_bloc.dart';
+import 'package:carwash/Alertbox/snackBarAlert.dart';
+import 'package:carwash/Bloc/Customer/customer_bloc.dart';
+import 'package:carwash/ModelClass/Customer/getCustomerByIdModel.dart';
 import 'package:carwash/Reusable/color.dart';
+import 'package:carwash/UI/Authentication/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class EditCustomer extends StatelessWidget {
   final bool isTablet;
-  const EditCustomer({super.key, required this.isTablet});
+  final String cusId;
+  const EditCustomer({super.key, required this.isTablet, required this.cusId});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => DemoBloc(),
-      child: EditCustomerView(isTablet: isTablet),
+      create: (_) => CustomerBloc(),
+      child: EditCustomerView(isTablet: isTablet, cusId: cusId),
     );
   }
 }
 
 class EditCustomerView extends StatefulWidget {
   final bool isTablet;
-  const EditCustomerView({super.key, required this.isTablet});
+  final String cusId;
+  const EditCustomerView({
+    super.key,
+    required this.isTablet,
+    required this.cusId,
+  });
 
   @override
   State<EditCustomerView> createState() => _EditCustomerViewState();
 }
 
 class _EditCustomerViewState extends State<EditCustomerView> {
+  GetCustomerByIdModel getCustomerByIdModel = GetCustomerByIdModel();
   final _formKey = GlobalKey<FormState>();
   bool isActive = true;
+  bool customerLoad = true;
 
   final firstNameController = TextEditingController();
   final lastNameController = TextEditingController();
   final phoneController = TextEditingController();
   final emailController = TextEditingController();
   final addressController = TextEditingController();
+  @override
+  void initState() {
+    super.initState();
+    context.read<CustomerBloc>().add(CustomerById(widget.cusId.toString()));
+    setState(() {
+      customerLoad = true;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final inputDecoration = InputDecoration(
@@ -41,217 +63,242 @@ class _EditCustomerViewState extends State<EditCustomerView> {
     );
 
     Widget mainContainer() {
-      return Padding(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      "Edit Customer",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Name fields
-                widget.isTablet
-                    ? Row(
+      return customerLoad
+          ? Container(
+              padding: EdgeInsets.only(
+                top: MediaQuery.of(context).size.height * 0.05,
+              ),
+              alignment: Alignment.center,
+              child: const SpinKitFadingCube(color: appPrimaryColor, size: 30),
+            )
+          : Padding(
+              padding: const EdgeInsets.all(20),
+              child: Form(
+                key: _formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Expanded(
-                            child: _buildTextField(
-                              'First name',
-                              firstNameController,
-                              inputDecoration,
+                          const Text(
+                            "Edit Customer",
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _buildTextField(
-                              'Last name',
-                              lastNameController,
-                              inputDecoration,
-                            ),
-                          ),
-                        ],
-                      )
-                    : Column(
-                        children: [
-                          _buildTextField(
-                            'First name',
-                            firstNameController,
-                            inputDecoration,
-                          ),
-                          const SizedBox(height: 10),
-                          _buildTextField(
-                            'Last name',
-                            lastNameController,
-                            inputDecoration,
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () => Navigator.pop(context),
                           ),
                         ],
                       ),
-                const SizedBox(height: 12),
+                      const SizedBox(height: 16),
 
-                // Phone + Email
-                widget.isTablet
-                    ? Row(
+                      // Name fields
+                      widget.isTablet
+                          ? Row(
+                              children: [
+                                Expanded(
+                                  child: _buildTextField(
+                                    'First name',
+                                    firstNameController,
+                                    inputDecoration,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: _buildTextField(
+                                    'Last name',
+                                    lastNameController,
+                                    inputDecoration,
+                                  ),
+                                ),
+                              ],
+                            )
+                          : Column(
+                              children: [
+                                _buildTextField(
+                                  'First name',
+                                  firstNameController,
+                                  inputDecoration,
+                                ),
+                                const SizedBox(height: 10),
+                                _buildTextField(
+                                  'Last name',
+                                  lastNameController,
+                                  inputDecoration,
+                                ),
+                              ],
+                            ),
+                      const SizedBox(height: 12),
+
+                      // Phone + Email
+                      widget.isTablet
+                          ? Row(
+                              children: [
+                                Expanded(
+                                  child: _buildTextField(
+                                    'Phone',
+                                    phoneController,
+                                    inputDecoration,
+                                    keyboardType: TextInputType.phone,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: _buildTextField(
+                                    'Email',
+                                    emailController,
+                                    inputDecoration,
+                                    keyboardType: TextInputType.emailAddress,
+                                  ),
+                                ),
+                              ],
+                            )
+                          : Column(
+                              children: [
+                                _buildTextField(
+                                  'Phone',
+                                  phoneController,
+                                  inputDecoration,
+                                  keyboardType: TextInputType.phone,
+                                ),
+                                const SizedBox(height: 10),
+                                _buildTextField(
+                                  'Email',
+                                  emailController,
+                                  inputDecoration,
+                                  keyboardType: TextInputType.emailAddress,
+                                ),
+                              ],
+                            ),
+                      const SizedBox(height: 12),
+
+                      // Address
+                      _buildTextField(
+                        'Address',
+                        addressController,
+                        inputDecoration,
+                        maxLines: 3,
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Active checkbox
+                      Row(
                         children: [
-                          Expanded(
-                            child: _buildTextField(
-                              'Phone',
-                              phoneController,
-                              inputDecoration,
-                              keyboardType: TextInputType.phone,
+                          Checkbox(
+                            value: isActive,
+                            activeColor: appSecondaryColor,
+                            onChanged: (v) =>
+                                setState(() => isActive = v ?? true),
+                          ),
+                          const Text('Active'),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Buttons
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          OutlinedButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text(
+                              'Cancel',
+                              style: TextStyle(color: appSecondaryColor),
                             ),
                           ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _buildTextField(
-                              'Email',
-                              emailController,
-                              inputDecoration,
-                              keyboardType: TextInputType.emailAddress,
+                          const SizedBox(width: 12),
+                          ElevatedButton(
+                            onPressed: () {
+                              if (_formKey.currentState!.validate()) {
+                                Navigator.pop(context);
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: appSecondaryColor,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: const Text(
+                              'Update changes',
+                              style: TextStyle(color: whiteColor),
                             ),
                           ),
                         ],
-                      )
-                    : Column(
-                        children: [
-                          _buildTextField(
-                            'Phone',
-                            phoneController,
-                            inputDecoration,
-                            keyboardType: TextInputType.phone,
-                          ),
-                          const SizedBox(height: 10),
-                          _buildTextField(
-                            'Email',
-                            emailController,
-                            inputDecoration,
-                            keyboardType: TextInputType.emailAddress,
-                          ),
-                        ],
                       ),
-                const SizedBox(height: 12),
-
-                // Address
-                _buildTextField(
-                  'Address',
-                  addressController,
-                  inputDecoration,
-                  maxLines: 3,
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 8),
-
-                // Active checkbox
-                Row(
-                  children: [
-                    Checkbox(
-                      value: isActive,
-                      activeColor: appSecondaryColor,
-                      onChanged: (v) => setState(() => isActive = v ?? true),
-                    ),
-                    const Text('Active'),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Buttons
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text(
-                        'Cancel',
-                        style: TextStyle(color: appSecondaryColor),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    ElevatedButton(
-                      onPressed: () {
-                        if (_formKey.currentState!.validate()) {
-                          Navigator.pop(context);
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: appSecondaryColor,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 12,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: const Text(
-                        'Update changes',
-                        style: TextStyle(color: whiteColor),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
+              ),
+            );
     }
 
     return Scaffold(
       backgroundColor: appScaffoldBackground,
-      body: BlocBuilder<DemoBloc, dynamic>(
+      body: BlocBuilder<CustomerBloc, dynamic>(
         buildWhen: ((previous, current) {
-          //            if (current is PostLoginModel) {
-          //              postLoginModel = current;
-          //              if (postLoginModel.success == true) {
-          //                setState(() {
-          //                  loginLoad = false;
-          //                });
-          //                showToast('${postLoginModel.message}', context, color: true);
-          //                if (postLoginModel.user!.role == "OPERATOR") {
-          //                  Navigator.of(context).pushAndRemoveUntil(
-          //                      MaterialPageRoute(
-          //                          builder: (context) => const DashBoardScreen(
-          //                                selectTab: 0,
-          //                              )),
-          //                      (Route<dynamic> route) => false);
-          //                } else {
-          //                  showToast("Please Login Admin in Web", context, color: false);
-          //                }
-          //              } else {
-          //                final errorMsg =
-          //                    postLoginModel.errorResponse?.errors?.first.message ??
-          //                        postLoginModel.message ??
-          //                        "Login failed. Please try again.";
-          //                showToast(errorMsg, context, color: false);
-          //                setState(() {
-          //                  loginLoad = false;
-          //                });
-          //              }
-          //              return true;
-          //            }
+          if (current is GetCustomerByIdModel) {
+            getCustomerByIdModel = current;
+            if (getCustomerByIdModel.success == true) {
+              setState(() {
+                customerLoad = false;
+                firstNameController.text = getCustomerByIdModel
+                    .result!
+                    .firstName
+                    .toString();
+                lastNameController.text = getCustomerByIdModel.result!.lastName
+                    .toString();
+                phoneController.text = getCustomerByIdModel.result!.phone
+                    .toString();
+                // addressController.text = getCustomerByIdModel.result!.ad
+                //     .toString();
+                emailController.text = getCustomerByIdModel.result!.email
+                    .toString();
+                isActive = getCustomerByIdModel.result!.isActive ?? false;
+              });
+            } else if (getCustomerByIdModel.errorResponse != null) {
+              debugPrint(
+                "Error: ${getCustomerByIdModel.errorResponse?.message}",
+              );
+              setState(() {
+                customerLoad = false;
+              });
+            }
+            if (getCustomerByIdModel.errorResponse?.isUnauthorized == true) {
+              _handle401Error();
+              return true;
+            }
+            return true;
+          }
           return false;
         }),
         builder: (context, dynamic) {
           return mainContainer();
         },
       ),
+    );
+  }
+
+  void _handle401Error() async {
+    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    await sharedPreferences.remove("token");
+    await sharedPreferences.clear();
+    showToast("Session expired. Please login again.", context, color: false);
+
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => LoginScreen()),
+      (Route<dynamic> route) => false,
     );
   }
 

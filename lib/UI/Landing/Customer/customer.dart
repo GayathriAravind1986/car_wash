@@ -42,7 +42,7 @@ class _CustomersPageViewState extends State<CustomersPageView> {
     switch (status) {
       case 'Active':
         return greenColor.shade100;
-      case 'InActive':
+      case 'In-Active':
         return redColor.shade100;
       default:
         return greyColor.shade100;
@@ -53,14 +53,14 @@ class _CustomersPageViewState extends State<CustomersPageView> {
     switch (status) {
       case 'Active':
         return greenColor;
-      case 'InActive':
+      case 'In-Active':
         return redColor;
       default:
         return blackColor87;
     }
   }
 
-  void _showAddEditCustomerDialog(BuildContext context) {
+  void _showAddEditCustomerDialog(BuildContext context, String? cusId) {
     showDialog(
       context: context,
       barrierColor: greyColor.withOpacity(0.85),
@@ -79,7 +79,7 @@ class _CustomersPageViewState extends State<CustomersPageView> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 700),
             child: isEdit == true
-                ? EditCustomer(isTablet: isTablet)
+                ? EditCustomer(isTablet: isTablet, cusId: cusId.toString())
                 : AddCustomer(isTablet: isTablet),
           ),
         );
@@ -314,7 +314,7 @@ class _CustomersPageViewState extends State<CustomersPageView> {
               onPressed: () {
                 setState(() {
                   isEdit = false;
-                  _showAddEditCustomerDialog(context);
+                  _showAddEditCustomerDialog(context, "");
                 });
               },
               style: ElevatedButton.styleFrom(
@@ -417,7 +417,7 @@ class _CustomersPageViewState extends State<CustomersPageView> {
                         DataCell(Text("${job.phone}")),
                         DataCell(
                           _statusBadge(
-                            job.isActive == true ? "Active" : "InActive",
+                            job.isActive == true ? "Active" : "In-Active",
                           ),
                         ),
                         DataCell(
@@ -427,7 +427,7 @@ class _CustomersPageViewState extends State<CustomersPageView> {
                                 onTap: () {
                                   setState(() {
                                     isEdit = true;
-                                    _showAddEditCustomerDialog(context);
+                                    _showAddEditCustomerDialog(context, job.id);
                                   });
                                 },
                                 child: Icon(
@@ -510,7 +510,7 @@ class _CustomersPageViewState extends State<CustomersPageView> {
                       Row(
                         children: [
                           _statusBadge(
-                            job?.isActive == true ? "Active" : "InActive",
+                            job?.isActive == true ? "Active" : "In-Active",
                           ),
                         ],
                       ),
@@ -522,7 +522,7 @@ class _CustomersPageViewState extends State<CustomersPageView> {
                             onTap: () {
                               setState(() {
                                 isEdit = true;
-                                _showAddEditCustomerDialog(context);
+                                _showAddEditCustomerDialog(context, job?.id);
                               });
                             },
                             child: Icon(

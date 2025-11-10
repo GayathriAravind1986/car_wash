@@ -9,15 +9,11 @@ class CustomerList extends CustomerEvent {
   CustomerList(this.searchKey, this.offset);
 }
 
-// class FoodProductItem extends CustomerEvent {
-//   String catId;
-//   String searchKey;
-//   String searchCode;
-//   String limit;
-//   String offset;
-//   FoodProductItem(
-//       this.catId, this.searchKey, this.searchCode, this.limit, this.offset);
-// }
+class CustomerById extends CustomerEvent {
+  String cusId;
+
+  CustomerById(this.cusId);
+}
 
 // class AddToBilling extends FoodCategoryEvent {
 //   List<Map<String, dynamic>> billingItems;
@@ -55,21 +51,16 @@ class CustomerBloc extends Bloc<CustomerEvent, dynamic> {
             emit(error);
           });
     });
-    //   on<FoodProductItem>((event, emit) async {
-    //     await ApiProvider()
-    //         .getProductItemAPI(
-    //       event.catId,
-    //       event.searchKey,
-    //       event.searchCode,
-    //       event.limit,
-    //       event.offset,
-    //     )
-    //         .then((value) {
-    //       emit(value);
-    //     }).catchError((error) {
-    //       emit(error);
-    //     });
-    //   });
+    on<CustomerById>((event, emit) async {
+      await ApiProvider()
+          .getCustomerByIdAPI(event.cusId)
+          .then((value) {
+            emit(value);
+          })
+          .catchError((error) {
+            emit(error);
+          });
+    });
     //   on<AddToBilling>((event, emit) async {
     //     await ApiProvider()
     //         .postAddToBillingAPI(

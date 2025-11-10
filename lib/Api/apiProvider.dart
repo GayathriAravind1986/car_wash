@@ -2,7 +2,9 @@ import 'dart:convert';
 
 import 'package:carwash/ModelClass/Authentication/postLoginModel.dart';
 import 'package:carwash/ModelClass/Customer/getAllCustomerModel.dart';
+import 'package:carwash/ModelClass/Customer/getCustomerByIdModel.dart';
 import 'package:carwash/ModelClass/JobCard/getAllJobCardModel.dart';
+import 'package:carwash/ModelClass/ShopDetails/getShopDetailsModel.dart';
 import 'package:carwash/ModelClass/Vehicle/getAllVehiclesModel.dart';
 import 'package:carwash/Reusable/constant.dart';
 import 'package:dio/dio.dart';
@@ -82,6 +84,50 @@ class ApiProvider {
     }
   }
 
+  /// shop Details
+  /// shop details - API Integration
+  Future<GetShopDetailsModel> getShopDetailsAPI() async {
+    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    var token = sharedPreferences.getString("token");
+    try {
+      var dio = Dio();
+      var response = await dio.request(
+        '${Constants.baseUrl}shop/details',
+        options: Options(
+          method: 'GET',
+          headers: {
+            "Content-Type": "application/json",
+            if (token != null) "Authorization": "Bearer $token",
+          },
+        ),
+      );
+      if (response.statusCode == 200 && response.data != null) {
+        if (response.data['success'] == true) {
+          GetShopDetailsModel getShopDetailsResponse =
+              GetShopDetailsModel.fromJson(response.data);
+          return getShopDetailsResponse;
+        }
+      } else {
+        return GetShopDetailsModel()
+          ..errorResponse = ErrorResponse(
+            message: "Error: ${response.data['message'] ?? 'Unknown error'}",
+            statusCode: response.statusCode,
+          );
+      }
+      return GetShopDetailsModel()
+        ..errorResponse = ErrorResponse(
+          message: "Unexpected error occurred.",
+          statusCode: 500,
+        );
+    } on DioException catch (dioError) {
+      final errorResponse = handleError(dioError);
+      return GetShopDetailsModel()..errorResponse = errorResponse;
+    } catch (error) {
+      final errorResponse = handleError(error);
+      return GetShopDetailsModel()..errorResponse = errorResponse;
+    }
+  }
+
   /// Customer
   /// Customer List - API Integration
   Future<GetAllCustomerModel> getAllCustomerAPI(
@@ -126,6 +172,49 @@ class ApiProvider {
     } catch (error) {
       final errorResponse = handleError(error);
       return GetAllCustomerModel()..errorResponse = errorResponse;
+    }
+  }
+
+  /// Customer List by id - API Integration
+  Future<GetCustomerByIdModel> getCustomerByIdAPI(String? cusId) async {
+    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    var token = sharedPreferences.getString("token");
+    try {
+      var dio = Dio();
+      var response = await dio.request(
+        '${Constants.baseUrl}customers/$cusId',
+        options: Options(
+          method: 'GET',
+          headers: {
+            "Content-Type": "application/json",
+            if (token != null) "Authorization": "Bearer $token",
+          },
+        ),
+      );
+      if (response.statusCode == 200 && response.data != null) {
+        if (response.data['success'] == true) {
+          GetCustomerByIdModel getCustomerByIdResponse =
+              GetCustomerByIdModel.fromJson(response.data);
+          return getCustomerByIdResponse;
+        }
+      } else {
+        return GetCustomerByIdModel()
+          ..errorResponse = ErrorResponse(
+            message: "Error: ${response.data['message'] ?? 'Unknown error'}",
+            statusCode: response.statusCode,
+          );
+      }
+      return GetCustomerByIdModel()
+        ..errorResponse = ErrorResponse(
+          message: "Unexpected error occurred.",
+          statusCode: 500,
+        );
+    } on DioException catch (dioError) {
+      final errorResponse = handleError(dioError);
+      return GetCustomerByIdModel()..errorResponse = errorResponse;
+    } catch (error) {
+      final errorResponse = handleError(error);
+      return GetCustomerByIdModel()..errorResponse = errorResponse;
     }
   }
 
