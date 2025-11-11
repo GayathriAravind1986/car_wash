@@ -1,8 +1,10 @@
 import 'package:carwash/Alertbox/snackBarAlert.dart';
 import 'package:carwash/Bloc/Customer/customer_bloc.dart';
 import 'package:carwash/ModelClass/Customer/getCustomerByIdModel.dart';
+import 'package:carwash/ModelClass/Customer/updateCustomerModel.dart';
 import 'package:carwash/Reusable/color.dart';
 import 'package:carwash/UI/Authentication/login_screen.dart';
+import 'package:carwash/UI/DashBoard/DashBoard.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
@@ -37,9 +39,11 @@ class EditCustomerView extends StatefulWidget {
 
 class _EditCustomerViewState extends State<EditCustomerView> {
   GetCustomerByIdModel getCustomerByIdModel = GetCustomerByIdModel();
+  UpdateCustomerModel updateCustomerModel = UpdateCustomerModel();
   final _formKey = GlobalKey<FormState>();
   bool isActive = true;
-  bool customerLoad = true;
+  bool customerLoad = false;
+  bool editLoad = false;
 
   final firstNameController = TextEditingController();
   final lastNameController = TextEditingController();
@@ -214,27 +218,45 @@ class _EditCustomerViewState extends State<EditCustomerView> {
                             ),
                           ),
                           const SizedBox(width: 12),
-                          ElevatedButton(
-                            onPressed: () {
-                              if (_formKey.currentState!.validate()) {
-                                Navigator.pop(context);
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: appSecondaryColor,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 12,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: const Text(
-                              'Update changes',
-                              style: TextStyle(color: whiteColor),
-                            ),
-                          ),
+                          editLoad
+                              ? const SpinKitCircle(
+                                  color: appPrimaryColor,
+                                  size: 30,
+                                )
+                              : ElevatedButton(
+                                  onPressed: () {
+                                    if (_formKey.currentState!.validate()) {
+                                      context.read<CustomerBloc>().add(
+                                        UpdateCustomer(
+                                          widget.cusId,
+                                          firstNameController.text,
+                                          lastNameController.text,
+                                          phoneController.text,
+                                          emailController.text,
+                                          addressController.text,
+                                          isActive,
+                                        ),
+                                      );
+                                      setState(() {
+                                        editLoad = true;
+                                      });
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: appSecondaryColor,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                      vertical: 12,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'Update changes',
+                                    style: TextStyle(color: whiteColor),
+                                  ),
+                                ),
                         ],
                       ),
                     ],
@@ -261,8 +283,8 @@ class _EditCustomerViewState extends State<EditCustomerView> {
                     .toString();
                 phoneController.text = getCustomerByIdModel.result!.phone
                     .toString();
-                // addressController.text = getCustomerByIdModel.result!.ad
-                //     .toString();
+                addressController.text = getCustomerByIdModel.result!.address
+                    .toString();
                 emailController.text = getCustomerByIdModel.result!.email
                     .toString();
                 isActive = getCustomerByIdModel.result!.isActive ?? false;
@@ -278,6 +300,57 @@ class _EditCustomerViewState extends State<EditCustomerView> {
             if (getCustomerByIdModel.errorResponse?.isUnauthorized == true) {
               _handle401Error();
               return true;
+            }
+            return true;
+          }
+          if (current is UpdateCustomerModel) {
+            updateCustomerModel = current;
+            if (updateCustomerModel.errorResponse?.isUnauthorized == true) {
+              _handle401Error();
+              return true;
+            }
+            if (updateCustomerModel.errorResponse?.statusCode == 500) {
+              showToast(
+                updateCustomerModel.message ?? "Server error occurred",
+                context,
+                color: false,
+              );
+              setState(() => editLoad = false);
+              return true;
+            }
+            if (updateCustomerModel.success == true) {
+              showToast(
+                updateCustomerModel.message ?? "Customer Updated successfully",
+                context,
+                color: true,
+              );
+              setState(() {
+                editLoad = false;
+              });
+              Future.microtask(() {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (context) => const DashBoardScreen(selectedTab: 1),
+                  ),
+                );
+              });
+            } else if (updateCustomerModel.success == false) {
+              showToast(
+                updateCustomerModel.message.toString(),
+                context,
+                color: true,
+              );
+              setState(() {
+                editLoad = false;
+              });
+            } else if (updateCustomerModel.errorResponse != null) {
+              showToast(
+                updateCustomerModel.errorResponse?.message ??
+                    "An error occurred",
+                context,
+                color: false,
+              );
+              setState(() => editLoad = false);
             }
             return true;
           }

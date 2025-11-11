@@ -194,6 +194,7 @@ class _JobCardsPageViewState extends State<JobCardsPageView> {
     return Scaffold(
       backgroundColor: appScaffoldBackground,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: whiteColor,
         elevation: 0,
         title: const Text(

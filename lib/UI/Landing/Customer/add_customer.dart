@@ -1,7 +1,13 @@
-import 'package:carwash/Bloc/demo/demo_bloc.dart';
+import 'package:carwash/Alertbox/snackBarAlert.dart';
+import 'package:carwash/Bloc/Customer/customer_bloc.dart';
+import 'package:carwash/ModelClass/Customer/postCustomerModel.dart';
 import 'package:carwash/Reusable/color.dart';
+import 'package:carwash/UI/Authentication/login_screen.dart';
+import 'package:carwash/UI/DashBoard/DashBoard.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AddCustomer extends StatelessWidget {
   final bool isTablet;
@@ -10,7 +16,7 @@ class AddCustomer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => DemoBloc(),
+      create: (_) => CustomerBloc(),
       child: AddCustomerView(isTablet: isTablet),
     );
   }
@@ -25,8 +31,10 @@ class AddCustomerView extends StatefulWidget {
 }
 
 class _AddCustomerViewState extends State<AddCustomerView> {
+  PostCustomerModel postCustomerModel = PostCustomerModel();
   final _formKey = GlobalKey<FormState>();
   bool isActive = true;
+  bool addCus = false;
 
   final firstNameController = TextEditingController();
   final lastNameController = TextEditingController();
@@ -183,27 +191,41 @@ class _AddCustomerViewState extends State<AddCustomerView> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    ElevatedButton(
-                      onPressed: () {
-                        if (_formKey.currentState!.validate()) {
-                          Navigator.pop(context);
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: appSecondaryColor,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 12,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: const Text(
-                        'Save changes',
-                        style: TextStyle(color: whiteColor),
-                      ),
-                    ),
+                    addCus
+                        ? const SpinKitCircle(color: appPrimaryColor, size: 30)
+                        : ElevatedButton(
+                            onPressed: () {
+                              if (_formKey.currentState!.validate()) {
+                                context.read<CustomerBloc>().add(
+                                  CreateCustomer(
+                                    firstNameController.text,
+                                    lastNameController.text,
+                                    phoneController.text,
+                                    emailController.text,
+                                    addressController.text,
+                                    isActive,
+                                  ),
+                                );
+                                setState(() {
+                                  addCus = true;
+                                });
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: appSecondaryColor,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: const Text(
+                              'Save changes',
+                              style: TextStyle(color: whiteColor),
+                            ),
+                          ),
                   ],
                 ),
               ],
@@ -215,43 +237,77 @@ class _AddCustomerViewState extends State<AddCustomerView> {
 
     return Scaffold(
       backgroundColor: appScaffoldBackground,
-      body: BlocBuilder<DemoBloc, dynamic>(
-        buildWhen: ((previous, current) {
-          //            if (current is PostLoginModel) {
-          //              postLoginModel = current;
-          //              if (postLoginModel.success == true) {
-          //                setState(() {
-          //                  loginLoad = false;
-          //                });
-          //                showToast('${postLoginModel.message}', context, color: true);
-          //                if (postLoginModel.user!.role == "OPERATOR") {
-          //                  Navigator.of(context).pushAndRemoveUntil(
-          //                      MaterialPageRoute(
-          //                          builder: (context) => const DashBoardScreen(
-          //                                selectTab: 0,
-          //                              )),
-          //                      (Route<dynamic> route) => false);
-          //                } else {
-          //                  showToast("Please Login Admin in Web", context, color: false);
-          //                }
-          //              } else {
-          //                final errorMsg =
-          //                    postLoginModel.errorResponse?.errors?.first.message ??
-          //                        postLoginModel.message ??
-          //                        "Login failed. Please try again.";
-          //                showToast(errorMsg, context, color: false);
-          //                setState(() {
-          //                  loginLoad = false;
-          //                });
-          //              }
-          //              return true;
-          //            }
+      body: BlocBuilder<CustomerBloc, dynamic>(
+        buildWhen: (previous, current) {
+          if (current is PostCustomerModel) {
+            postCustomerModel = current;
+            if (postCustomerModel.errorResponse?.isUnauthorized == true) {
+              _handle401Error();
+              return true;
+            }
+            if (postCustomerModel.errorResponse?.statusCode == 500) {
+              showToast(
+                postCustomerModel.message ?? "Server error occurred",
+                context,
+                color: false,
+              );
+              setState(() => addCus = false);
+              return true;
+            }
+            if (postCustomerModel.success == true) {
+              debugPrint("success True");
+              showToast(
+                postCustomerModel.message ?? "Customer created successfully",
+                context,
+                color: true,
+              );
+              setState(() {
+                addCus = false;
+              });
+              Future.microtask(() {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (context) => const DashBoardScreen(selectedTab: 1),
+                  ),
+                );
+              });
+            } else if (postCustomerModel.success == false) {
+              showToast(
+                postCustomerModel.message.toString(),
+                context,
+                color: true,
+              );
+              setState(() {
+                addCus = false;
+              });
+            } else if (postCustomerModel.errorResponse != null) {
+              showToast(
+                postCustomerModel.errorResponse?.message ?? "An error occurred",
+                context,
+                color: false,
+              );
+              setState(() => addCus = false);
+            }
+            return true;
+          }
           return false;
-        }),
-        builder: (context, dynamic) {
+        },
+        builder: (context, state) {
           return mainContainer();
         },
       ),
+    );
+  }
+
+  void _handle401Error() async {
+    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    await sharedPreferences.remove("token");
+    await sharedPreferences.clear();
+    showToast("Session expired. Please login again.", context, color: false);
+
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => LoginScreen()),
+      (Route<dynamic> route) => false,
     );
   }
 

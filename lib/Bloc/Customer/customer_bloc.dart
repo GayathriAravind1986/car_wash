@@ -9,41 +9,74 @@ class CustomerList extends CustomerEvent {
   CustomerList(this.searchKey, this.offset);
 }
 
+class CreateCustomer extends CustomerEvent {
+  String firstName;
+  String lastName;
+  String phone;
+  String email;
+  String address;
+  bool active;
+  CreateCustomer(
+    this.firstName,
+    this.lastName,
+    this.phone,
+    this.email,
+    this.address,
+    this.active,
+  );
+}
+
 class CustomerById extends CustomerEvent {
   String cusId;
-
   CustomerById(this.cusId);
 }
 
-// class AddToBilling extends FoodCategoryEvent {
-//   List<Map<String, dynamic>> billingItems;
-//   bool? isDiscount;
-//   final OrderType? orderType;
-//   AddToBilling(this.billingItems, this.isDiscount, this.orderType);
-// }
-//
-// class GenerateOrder extends FoodCategoryEvent {
-//   final String orderPayloadJson;
-//   GenerateOrder(this.orderPayloadJson);
-// }
-//
-// class UpdateOrder extends FoodCategoryEvent {
-//   final String orderPayloadJson;
-//   String? orderId;
-//   UpdateOrder(this.orderPayloadJson, this.orderId);
-// }
-//
-// class TableDine extends FoodCategoryEvent {}
-//
-// class WaiterDine extends FoodCategoryEvent {}
-//
-// class StockDetails extends FoodCategoryEvent {}
+class UpdateCustomer extends CustomerEvent {
+  String cusId;
+  String firstName;
+  String lastName;
+  String phone;
+  String email;
+  String address;
+  bool active;
+  UpdateCustomer(
+    this.cusId,
+    this.firstName,
+    this.lastName,
+    this.phone,
+    this.email,
+    this.address,
+    this.active,
+  );
+}
+
+class CustomerVehicle extends CustomerEvent {
+  String cusId;
+  CustomerVehicle(this.cusId);
+}
 
 class CustomerBloc extends Bloc<CustomerEvent, dynamic> {
   CustomerBloc() : super(dynamic) {
     on<CustomerList>((event, emit) async {
       await ApiProvider()
           .getAllCustomerAPI(event.searchKey, event.offset)
+          .then((value) {
+            emit(value);
+          })
+          .catchError((error) {
+            emit(error);
+          });
+    });
+    on<CreateCustomer>((event, emit) async {
+      await ApiProvider()
+          .postCustomerAPI(
+            event.firstName,
+            event.lastName,
+            event.phone,
+            event.email,
+            event.address,
+            event.active,
+          )
           .then((value) {
             emit(value);
           })
@@ -61,57 +94,33 @@ class CustomerBloc extends Bloc<CustomerEvent, dynamic> {
             emit(error);
           });
     });
-    //   on<AddToBilling>((event, emit) async {
-    //     await ApiProvider()
-    //         .postAddToBillingAPI(
-    //       event.billingItems,
-    //       event.isDiscount,
-    //       event.orderType?.apiValue,
-    //     )
-    //         .then((value) {
-    //       emit(value);
-    //     }).catchError((error) {
-    //       emit(error);
-    //     });
-    //   });
-    //   on<GenerateOrder>((event, emit) async {
-    //     await ApiProvider()
-    //         .postGenerateOrderAPI(event.orderPayloadJson)
-    //         .then((value) {
-    //       emit(value);
-    //     }).catchError((error) {
-    //       emit(error);
-    //     });
-    //   });
-    //   on<UpdateOrder>((event, emit) async {
-    //     await ApiProvider()
-    //         .updateGenerateOrderAPI(event.orderPayloadJson, event.orderId)
-    //         .then((value) {
-    //       emit(value);
-    //     }).catchError((error) {
-    //       emit(error);
-    //     });
-    //   });
-    //   on<TableDine>((event, emit) async {
-    //     await ApiProvider().getTableAPI().then((value) {
-    //       emit(value);
-    //     }).catchError((error) {
-    //       emit(error);
-    //     });
-    //   });
-    //   on<WaiterDine>((event, emit) async {
-    //     await ApiProvider().getWaiterAPI().then((value) {
-    //       emit(value);
-    //     }).catchError((error) {
-    //       emit(error);
-    //     });
-    //   });
-    //   on<StockDetails>((event, emit) async {
-    //     await ApiProvider().getStockDetailsAPI().then((value) {
-    //       emit(value);
-    //     }).catchError((error) {
-    //       emit(error);
-    //     });
-    //   });
+    on<UpdateCustomer>((event, emit) async {
+      await ApiProvider()
+          .updateCustomerAPI(
+            event.cusId,
+            event.firstName,
+            event.lastName,
+            event.phone,
+            event.email,
+            event.address,
+            event.active,
+          )
+          .then((value) {
+            emit(value);
+          })
+          .catchError((error) {
+            emit(error);
+          });
+    });
+    on<CustomerVehicle>((event, emit) async {
+      await ApiProvider()
+          .getVehicleByCustomerAPI(event.cusId)
+          .then((value) {
+            emit(value);
+          })
+          .catchError((error) {
+            emit(error);
+          });
+    });
   }
 }

@@ -1,11 +1,11 @@
 import 'package:carwash/Bloc/Response/errorResponse.dart';
 
 /// success : true
-/// message : "Customer fetch successfully"
-/// result : {"id":"8a5548ef-7dd5-43c3-9eb7-42c709dd76d4","firstName":"Mathan","lastName":"Tech","email":"","phone":"9876543210","isActive":true}
+/// message : "Customer updated successfully"
+/// result : {"id":"8a5548ef-7dd5-43c3-9eb7-42c709dd76d4","firstName":"Mathan","lastName":"Tech","email":"","phone":"9876543210","address":"Ad","isActive":true}
 
-class GetCustomerByIdModel {
-  GetCustomerByIdModel({
+class UpdateCustomerModel {
+  UpdateCustomerModel({
     bool? success,
     String? message,
     Result? result,
@@ -16,7 +16,7 @@ class GetCustomerByIdModel {
     _result = result;
   }
 
-  GetCustomerByIdModel.fromJson(dynamic json) {
+  UpdateCustomerModel.fromJson(dynamic json) {
     _success = json['success'];
     _message = json['message'];
     _result = json['result'] != null ? Result.fromJson(json['result']) : null;
@@ -30,11 +30,11 @@ class GetCustomerByIdModel {
   String? _message;
   Result? _result;
   ErrorResponse? errorResponse;
-  GetCustomerByIdModel copyWith({
+  UpdateCustomerModel copyWith({
     bool? success,
     String? message,
     Result? result,
-  }) => GetCustomerByIdModel(
+  }) => UpdateCustomerModel(
     success: success ?? _success,
     message: message ?? _message,
     result: result ?? _result,
@@ -62,6 +62,7 @@ class GetCustomerByIdModel {
 /// lastName : "Tech"
 /// email : ""
 /// phone : "9876543210"
+/// address : "Ad"
 /// isActive : true
 
 class Result {

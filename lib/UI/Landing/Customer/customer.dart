@@ -1,6 +1,7 @@
 import 'package:carwash/Alertbox/snackBarAlert.dart';
 import 'package:carwash/Bloc/Customer/customer_bloc.dart';
 import 'package:carwash/ModelClass/Customer/getAllCustomerModel.dart';
+import 'package:carwash/ModelClass/Customer/getVehicleByCustomerModel.dart';
 import 'package:carwash/Reusable/color.dart';
 import 'package:carwash/UI/Authentication/login_screen.dart';
 import 'package:carwash/UI/Landing/Customer/add_customer.dart';
@@ -31,12 +32,15 @@ class CustomersPageView extends StatefulWidget {
 
 class _CustomersPageViewState extends State<CustomersPageView> {
   GetAllCustomerModel getAllCustomerModel = GetAllCustomerModel();
+  GetVehicleByCustomerModel getVehicleByCustomerModel =
+      GetVehicleByCustomerModel();
   final TextEditingController _searchController = TextEditingController();
   int offset = 0;
   int limit = 10;
   int currentPage = 1;
   bool? isEdit = false;
   bool customerLoad = false;
+  bool vehLoad = false;
 
   Color getStatusColor(String status) {
     switch (status) {
@@ -87,7 +91,7 @@ class _CustomersPageViewState extends State<CustomersPageView> {
     );
   }
 
-  void showCustomerVehiclesPopup(BuildContext context) {
+  Future<void> showCustomerVehiclesPopup(BuildContext context) async {
     final isTablet = MediaQuery.of(context).size.width > 600;
 
     showDialog(
@@ -129,7 +133,7 @@ class _CustomersPageViewState extends State<CustomersPageView> {
                       onTap: () => Navigator.pop(context),
                       child: const Icon(
                         Icons.close,
-                        size: 20,
+                        size: 25,
                         color: blackColor54,
                       ),
                     ),
@@ -149,19 +153,22 @@ class _CustomersPageViewState extends State<CustomersPageView> {
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
+                    children: [
                       Text(
-                        "TN-51-MP-1208",
-                        style: TextStyle(
+                        "${getVehicleByCustomerModel.result?.first.registrationNumber}",
+                        style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
                           color: blackColor87,
                         ),
                       ),
-                      SizedBox(height: 6),
+                      const SizedBox(height: 6),
                       Text(
-                        "Mercedez - S-class",
-                        style: TextStyle(fontSize: 14, color: blackColor54),
+                        "${getVehicleByCustomerModel.result?.first.make} - ${getVehicleByCustomerModel.result?.first.model}",
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: blackColor54,
+                        ),
                       ),
                     ],
                   ),
@@ -180,6 +187,7 @@ class _CustomersPageViewState extends State<CustomersPageView> {
     context.read<CustomerBloc>().add(
       CustomerList(_searchController.text, offset.toString()),
     );
+
     setState(() {
       customerLoad = true;
     });
@@ -301,6 +309,7 @@ class _CustomersPageViewState extends State<CustomersPageView> {
     return Scaffold(
       backgroundColor: appScaffoldBackground,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: whiteColor,
         elevation: 0,
         title: const Text(
@@ -352,6 +361,34 @@ class _CustomersPageViewState extends State<CustomersPageView> {
               });
             }
             if (getAllCustomerModel.errorResponse?.isUnauthorized == true) {
+              _handle401Error();
+              return true;
+            }
+            return true;
+          }
+          if (current is GetVehicleByCustomerModel) {
+            getVehicleByCustomerModel = current;
+            if (getVehicleByCustomerModel.success == true) {
+              setState(() {
+                vehLoad = false;
+                showCustomerVehiclesPopup(context);
+              });
+            } else if (getVehicleByCustomerModel.errorResponse != null) {
+              debugPrint(
+                "Error: ${getVehicleByCustomerModel.errorResponse?.message}",
+              );
+              showToast(
+                getVehicleByCustomerModel.errorResponse?.message ??
+                    "Server error occurred",
+                context,
+                color: false,
+              );
+              setState(() {
+                vehLoad = false;
+              });
+            }
+            if (getVehicleByCustomerModel.errorResponse?.isUnauthorized ==
+                true) {
               _handle401Error();
               return true;
             }
@@ -439,7 +476,12 @@ class _CustomersPageViewState extends State<CustomersPageView> {
                               const SizedBox(width: 8),
                               GestureDetector(
                                 onTap: () {
-                                  showCustomerVehiclesPopup(context);
+                                  setState(() {
+                                    vehLoad = true;
+                                  });
+                                  context.read<CustomerBloc>().add(
+                                    CustomerVehicle(job.id.toString()),
+                                  );
                                 },
                                 child: Icon(
                                   Icons.remove_red_eye_outlined,
@@ -534,7 +576,12 @@ class _CustomersPageViewState extends State<CustomersPageView> {
                           SizedBox(width: 8),
                           GestureDetector(
                             onTap: () {
-                              showCustomerVehiclesPopup(context);
+                              setState(() {
+                                vehLoad = true;
+                              });
+                              context.read<CustomerBloc>().add(
+                                CustomerVehicle(job!.id.toString()),
+                              );
                             },
                             child: Icon(
                               Icons.remove_red_eye_outlined,

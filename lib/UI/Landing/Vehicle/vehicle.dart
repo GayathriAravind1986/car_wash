@@ -214,6 +214,7 @@ class _VehiclesPageViewState extends State<VehiclesPageView> {
     return Scaffold(
       backgroundColor: appScaffoldBackground,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: whiteColor,
         elevation: 0,
         title: const Text(
