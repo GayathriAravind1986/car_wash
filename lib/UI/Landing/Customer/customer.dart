@@ -84,7 +84,7 @@ class _CustomersPageViewState extends State<CustomersPageView> {
             constraints: const BoxConstraints(maxWidth: 700),
             child: isEdit == true
                 ? EditCustomer(isTablet: isTablet, cusId: cusId.toString())
-                : AddCustomer(isTablet: isTablet),
+                : AddCustomer(isTablet: isTablet, from: "customer"),
           ),
         );
       },

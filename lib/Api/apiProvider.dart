@@ -7,8 +7,12 @@ import 'package:carwash/ModelClass/Customer/getVehicleByCustomerModel.dart';
 import 'package:carwash/ModelClass/Customer/postCustomerModel.dart';
 import 'package:carwash/ModelClass/Customer/updateCustomerModel.dart';
 import 'package:carwash/ModelClass/JobCard/getAllJobCardModel.dart';
+import 'package:carwash/ModelClass/JobCard/getCustomerDropModel.dart';
 import 'package:carwash/ModelClass/ShopDetails/getShopDetailsModel.dart';
 import 'package:carwash/ModelClass/Vehicle/getAllVehiclesModel.dart';
+import 'package:carwash/ModelClass/Vehicle/getOneVehicleModel.dart';
+import 'package:carwash/ModelClass/Vehicle/postVehicleModel.dart';
+import 'package:carwash/ModelClass/Vehicle/updateVehicleModel.dart';
 import 'package:carwash/Reusable/constant.dart';
 import 'package:dio/dio.dart';
 import 'package:carwash/Bloc/Response/errorResponse.dart';
@@ -435,6 +439,49 @@ class ApiProvider {
     }
   }
 
+  /// Customer List DropDown - API integration
+  Future<GetCustomerDropModel> getCustomerDropAPI() async {
+    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    var token = sharedPreferences.getString("token");
+    try {
+      var dio = Dio();
+      var response = await dio.request(
+        '${Constants.baseUrl}customers/list',
+        options: Options(
+          method: 'GET',
+          headers: {
+            "Content-Type": "application/json",
+            if (token != null) "Authorization": "Bearer $token",
+          },
+        ),
+      );
+      if (response.statusCode == 200 && response.data != null) {
+        if (response.data['success'] == true) {
+          GetCustomerDropModel getCustomerDropResponse =
+              GetCustomerDropModel.fromJson(response.data);
+          return getCustomerDropResponse;
+        }
+      } else {
+        return GetCustomerDropModel()
+          ..errorResponse = ErrorResponse(
+            message: "Error: ${response.data['message'] ?? 'Unknown error'}",
+            statusCode: response.statusCode,
+          );
+      }
+      return GetCustomerDropModel()
+        ..errorResponse = ErrorResponse(
+          message: "Unexpected error occurred.",
+          statusCode: 500,
+        );
+    } on DioException catch (dioError) {
+      final errorResponse = handleError(dioError);
+      return GetCustomerDropModel()..errorResponse = errorResponse;
+    } catch (error) {
+      final errorResponse = handleError(error);
+      return GetCustomerDropModel()..errorResponse = errorResponse;
+    }
+  }
+
   /// Vehicles
   /// Vehicles API Integration
   Future<GetAllVehiclesModel> getAllVehicleAPI(
@@ -482,6 +529,180 @@ class ApiProvider {
     } catch (error) {
       final errorResponse = handleError(error);
       return GetAllVehiclesModel()..errorResponse = errorResponse;
+    }
+  }
+
+  /// Create Vehicle - API Integration
+  Future<PostVehicleModel> postVehicleAPI(
+    String? make,
+    String? model,
+    String? year,
+    String? regNo,
+    String? color,
+    bool? active,
+    String? cusId,
+  ) async {
+    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    var token = sharedPreferences.getString("token");
+    try {
+      final dataMap = {
+        "make": make,
+        "model": model,
+        "year": year,
+        "registrationNumber": regNo,
+        "vin": null,
+        "color": color,
+        "isActive": active,
+        "customerId": cusId,
+      };
+      var data = json.encode(dataMap);
+      var dio = Dio();
+      var response = await dio.request(
+        '${Constants.baseUrl}vehicles',
+        options: Options(
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        ),
+        data: data,
+      );
+      if (response.statusCode == 201 && response.data != null) {
+        if (response.data['success'] == true) {
+          PostVehicleModel postVehicleResponse = PostVehicleModel.fromJson(
+            response.data,
+          );
+          return postVehicleResponse;
+        }
+      } else {
+        return PostVehicleModel()
+          ..errorResponse = ErrorResponse(
+            message: "Error: ${response.data['message'] ?? 'Unknown error'}",
+            statusCode: response.statusCode,
+          );
+      }
+      return PostVehicleModel()
+        ..errorResponse = ErrorResponse(
+          message: "Unexpected error occurred.",
+          statusCode: 500,
+        );
+    } on DioException catch (dioError) {
+      final errorResponse = handleError(dioError);
+      return PostVehicleModel()..errorResponse = errorResponse;
+    } catch (error) {
+      final errorResponse = handleError(error);
+      return PostVehicleModel()..errorResponse = errorResponse;
+    }
+  }
+
+  /// Vehicle List by id - API Integration
+  Future<GetOneVehicleModel> getOneVehicleAPI(String? vehId) async {
+    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    var token = sharedPreferences.getString("token");
+    try {
+      var dio = Dio();
+      var response = await dio.request(
+        '${Constants.baseUrl}vehicles/$vehId',
+        options: Options(
+          method: 'GET',
+          headers: {
+            "Content-Type": "application/json",
+            if (token != null) "Authorization": "Bearer $token",
+          },
+        ),
+      );
+      if (response.statusCode == 200 && response.data != null) {
+        if (response.data['success'] == true) {
+          GetOneVehicleModel getOneVehicleResponse =
+              GetOneVehicleModel.fromJson(response.data);
+          return getOneVehicleResponse;
+        }
+      } else {
+        return GetOneVehicleModel()
+          ..errorResponse = ErrorResponse(
+            message: "Error: ${response.data['message'] ?? 'Unknown error'}",
+            statusCode: response.statusCode,
+          );
+      }
+      return GetOneVehicleModel()
+        ..errorResponse = ErrorResponse(
+          message: "Unexpected error occurred.",
+          statusCode: 500,
+        );
+    } on DioException catch (dioError) {
+      final errorResponse = handleError(dioError);
+      return GetOneVehicleModel()..errorResponse = errorResponse;
+    } catch (error) {
+      final errorResponse = handleError(error);
+      return GetOneVehicleModel()..errorResponse = errorResponse;
+    }
+  }
+
+  /// Edit Vehicle - API Integration
+  Future<UpdateVehicleModel> updateVehicleAPI(
+    String? vehId,
+    String? make,
+    String? model,
+    String? year,
+    String? regNo,
+    String? color,
+    bool? active,
+    String? cusId,
+    String? shopId,
+  ) async {
+    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    var token = sharedPreferences.getString("token");
+    try {
+      final dataMap = {
+        "id": vehId,
+        "make": make,
+        "model": model,
+        "year": year,
+        "registrationNumber": regNo,
+        "vin": "",
+        "color": color,
+        "isActive": active,
+        "customerId": cusId,
+        "shopId": shopId,
+      };
+      var data = json.encode(dataMap);
+      var dio = Dio();
+      var response = await dio.request(
+        '${Constants.baseUrl}vehicles/$vehId',
+        options: Options(
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        ),
+        data: data,
+      );
+      if (response.statusCode == 200 && response.data != null) {
+        if (response.data['success'] == true) {
+          UpdateVehicleModel updateVehicleResponse =
+              UpdateVehicleModel.fromJson(response.data);
+          return updateVehicleResponse;
+        }
+      } else {
+        return UpdateVehicleModel()
+          ..errorResponse = ErrorResponse(
+            message: "Error: ${response.data['message'] ?? 'Unknown error'}",
+            statusCode: response.statusCode,
+          );
+      }
+      return UpdateVehicleModel()
+        ..errorResponse = ErrorResponse(
+          message: "Unexpected error occurred.",
+          statusCode: 500,
+        );
+    } on DioException catch (dioError) {
+      final errorResponse = handleError(dioError);
+      return UpdateVehicleModel()..errorResponse = errorResponse;
+    } catch (error) {
+      final errorResponse = handleError(error);
+      return UpdateVehicleModel()..errorResponse = errorResponse;
     }
   }
 

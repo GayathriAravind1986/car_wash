@@ -4,27 +4,34 @@ import 'package:carwash/ModelClass/Customer/postCustomerModel.dart';
 import 'package:carwash/Reusable/color.dart';
 import 'package:carwash/UI/Authentication/login_screen.dart';
 import 'package:carwash/UI/DashBoard/DashBoard.dart';
+import 'package:carwash/UI/Landing/JobCard/add_job_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AddCustomer extends StatelessWidget {
+  final String from;
   final bool isTablet;
-  const AddCustomer({super.key, required this.isTablet});
+  const AddCustomer({super.key, required this.isTablet, required this.from});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => CustomerBloc(),
-      child: AddCustomerView(isTablet: isTablet),
+      child: AddCustomerView(isTablet: isTablet, from: from),
     );
   }
 }
 
 class AddCustomerView extends StatefulWidget {
+  final String from;
   final bool isTablet;
-  const AddCustomerView({super.key, required this.isTablet});
+  const AddCustomerView({
+    super.key,
+    required this.isTablet,
+    required this.from,
+  });
 
   @override
   State<AddCustomerView> createState() => _AddCustomerViewState();
@@ -265,11 +272,19 @@ class _AddCustomerViewState extends State<AddCustomerView> {
                 addCus = false;
               });
               Future.microtask(() {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(
-                    builder: (context) => const DashBoardScreen(selectedTab: 1),
-                  ),
-                );
+                widget.from == "addJobCard"
+                    ? Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              AddJobCard(isTablet: widget.isTablet),
+                        ),
+                      )
+                    : Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              const DashBoardScreen(selectedTab: 1),
+                        ),
+                      );
               });
             } else if (postCustomerModel.success == false) {
               showToast(

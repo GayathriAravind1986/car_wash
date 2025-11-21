@@ -1,26 +1,41 @@
-import 'package:carwash/Bloc/demo/demo_bloc.dart';
+import 'package:carwash/Alertbox/snackBarAlert.dart';
+import 'package:carwash/Bloc/Vehicle/vehicle_bloc.dart';
+import 'package:carwash/ModelClass/JobCard/getCustomerDropModel.dart';
+import 'package:carwash/ModelClass/Vehicle/postVehicleModel.dart';
 import 'package:carwash/Reusable/color.dart';
+import 'package:carwash/UI/Authentication/login_screen.dart';
+import 'package:carwash/UI/DashBoard/DashBoard.dart';
 import 'package:carwash/UI/Landing/Customer/add_customer.dart';
+import 'package:carwash/UI/Landing/JobCard/add_job_card.dart';
 import 'package:carwash/UI/Landing/JobCard/search_text_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AddVehicle extends StatelessWidget {
   final bool isTablet;
   final String from;
   final String name;
+  final String cusId;
   const AddVehicle({
     super.key,
     required this.isTablet,
     required this.from,
     required this.name,
+    required this.cusId,
   });
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => DemoBloc(),
-      child: AddVehicleView(isTablet: isTablet, from: from, name: name),
+      create: (_) => VehicleBloc(),
+      child: AddVehicleView(
+        isTablet: isTablet,
+        from: from,
+        name: name,
+        cusId: cusId,
+      ),
     );
   }
 }
@@ -29,11 +44,13 @@ class AddVehicleView extends StatefulWidget {
   final bool isTablet;
   final String from;
   final String name;
+  final String cusId;
   const AddVehicleView({
     super.key,
     required this.isTablet,
     required this.from,
     required this.name,
+    required this.cusId,
   });
 
   @override
@@ -41,6 +58,8 @@ class AddVehicleView extends StatefulWidget {
 }
 
 class _AddVehicleViewState extends State<AddVehicleView> {
+  PostVehicleModel postVehicleModel = PostVehicleModel();
+  GetCustomerDropModel getCustomerDropModel = GetCustomerDropModel();
   final _formKey = GlobalKey<FormState>();
   final makeController = TextEditingController();
   final modelController = TextEditingController();
@@ -48,26 +67,20 @@ class _AddVehicleViewState extends State<AddVehicleView> {
   final regNumberController = TextEditingController();
   final vinController = TextEditingController();
   bool isActive = true;
+  bool createVehLoad = false;
+  bool cusDropLoad = false;
   String? selectedYear;
   String? selectedCustomer;
+  String? cusId;
   TextEditingController customerController = TextEditingController();
-  final List<Map<String, String>> customers = [
-    {"name": "Prakash Prakash", "email": "", "phone": "8908907654"},
-    {
-      "name": "Saranya Thangaraj",
-      "email": "sentinix@gmail.com",
-      "phone": "8908907654",
-    },
-    {
-      "name": "Pradeep M",
-      "email": "pradeep@yopmail.com",
-      "phone": "8908907654",
-    },
-  ];
   @override
   void initState() {
     super.initState();
     selectedYear = DateTime.now().year.toString();
+    context.read<VehicleBloc>().add(CustomerDrop());
+    setState(() {
+      cusDropLoad = true;
+    });
   }
 
   @override
@@ -89,6 +102,20 @@ class _AddVehicleViewState extends State<AddVehicleView> {
     );
 
     Widget mainContainer() {
+      if (getCustomerDropModel.result == null) {
+        return const Center(
+          child: SpinKitFadingCube(color: appPrimaryColor, size: 30),
+        );
+      }
+      final customers = getCustomerDropModel.result!.map((c) {
+        return {
+          "cusId": c.id ?? "",
+          "firstName": c.firstName ?? "",
+          "lastName": c.lastName ?? "",
+          "email": c.email ?? "",
+          "phone": c.phone ?? "",
+        };
+      }).toList();
       return Padding(
         padding: const EdgeInsets.all(20),
         child: Form(
@@ -133,15 +160,20 @@ class _AddVehicleViewState extends State<AddVehicleView> {
                   _buildSearchableDropdown(
                     label: "Customer",
                     controller: customerController,
-                    items: customers.map((c) => c['name']!).toList(),
+                    items: customers
+                        .map((c) => "${c['firstName']} ${c['lastName']}".trim())
+                        .toList(),
                     icon: Icons.person_outline,
                     onAddNew: () => _showAddCustomerDialog(context),
                     displayBuilder: (index) {
+                      final fullName =
+                          "${customers[index]['firstName']} ${customers[index]['lastName']}"
+                              .trim();
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            customers[index]['name']!,
+                            fullName,
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
@@ -160,8 +192,17 @@ class _AddVehicleViewState extends State<AddVehicleView> {
                       );
                     },
                     onItemSelected: (selectedItem) {
+                      final selectedIndex = customers
+                          .map(
+                            (c) => "${c['firstName']} ${c['lastName']}".trim(),
+                          )
+                          .toList()
+                          .indexOf(selectedItem);
+
+                      if (selectedIndex == -1) return;
                       setState(() {
                         customerController.text = selectedItem;
+                        cusId = customers[selectedIndex]['cusId'] ?? "";
                         debugPrint("Selected Customer: $selectedItem");
                       });
                     },
@@ -263,6 +304,7 @@ class _AddVehicleViewState extends State<AddVehicleView> {
                   hintText: "1G1YY22G965123456",
                   vinController,
                   inputDecoration,
+                  isRequired: false,
                 ),
                 const SizedBox(height: 8),
                 Row(
@@ -289,27 +331,44 @@ class _AddVehicleViewState extends State<AddVehicleView> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    ElevatedButton(
-                      onPressed: () {
-                        if (_formKey.currentState!.validate()) {
-                          Navigator.pop(context);
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: appSecondaryColor,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 12,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: const Text(
-                        'Create Vehicle',
-                        style: TextStyle(color: whiteColor),
-                      ),
-                    ),
+                    createVehLoad
+                        ? const SpinKitCircle(color: appPrimaryColor, size: 30)
+                        : ElevatedButton(
+                            onPressed: () {
+                              if (_formKey.currentState!.validate()) {
+                                context.read<VehicleBloc>().add(
+                                  CreateVehicle(
+                                    makeController.text,
+                                    modelController.text,
+                                    selectedYear.toString(),
+                                    regNumberController.text,
+                                    colorController.text,
+                                    isActive,
+                                    widget.from == "addJobCard"
+                                        ? widget.cusId
+                                        : cusId.toString(),
+                                  ),
+                                );
+                                setState(() {
+                                  createVehLoad = true;
+                                });
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: appSecondaryColor,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: const Text(
+                              'Create Vehicle',
+                              style: TextStyle(color: whiteColor),
+                            ),
+                          ),
                   ],
                 ),
               ],
@@ -321,43 +380,104 @@ class _AddVehicleViewState extends State<AddVehicleView> {
 
     return Scaffold(
       backgroundColor: appScaffoldBackground,
-      body: BlocBuilder<DemoBloc, dynamic>(
+      body: BlocBuilder<VehicleBloc, dynamic>(
         buildWhen: ((previous, current) {
-          //            if (current is PostLoginModel) {
-          //              postLoginModel = current;
-          //              if (postLoginModel.success == true) {
-          //                setState(() {
-          //                  loginLoad = false;
-          //                });
-          //                showToast('${postLoginModel.message}', context, color: true);
-          //                if (postLoginModel.user!.role == "OPERATOR") {
-          //                  Navigator.of(context).pushAndRemoveUntil(
-          //                      MaterialPageRoute(
-          //                          builder: (context) => const DashBoardScreen(
-          //                                selectTab: 0,
-          //                              )),
-          //                      (Route<dynamic> route) => false);
-          //                } else {
-          //                  showToast("Please Login Admin in Web", context, color: false);
-          //                }
-          //              } else {
-          //                final errorMsg =
-          //                    postLoginModel.errorResponse?.errors?.first.message ??
-          //                        postLoginModel.message ??
-          //                        "Login failed. Please try again.";
-          //                showToast(errorMsg, context, color: false);
-          //                setState(() {
-          //                  loginLoad = false;
-          //                });
-          //              }
-          //              return true;
-          //            }
+          if (current is GetCustomerDropModel) {
+            getCustomerDropModel = current;
+            if (getCustomerDropModel.success == true) {
+              setState(() {
+                cusDropLoad = false;
+              });
+            } else if (getCustomerDropModel.errorResponse != null) {
+              debugPrint(
+                "Error: ${getCustomerDropModel.errorResponse?.message}",
+              );
+              setState(() {
+                cusDropLoad = false;
+              });
+            }
+            if (getCustomerDropModel.errorResponse?.isUnauthorized == true) {
+              _handle401Error();
+              return true;
+            }
+            return true;
+          }
+          if (current is PostVehicleModel) {
+            postVehicleModel = current;
+            if (postVehicleModel.errorResponse?.isUnauthorized == true) {
+              _handle401Error();
+              return true;
+            }
+            if (postVehicleModel.errorResponse?.statusCode == 500) {
+              showToast(
+                postVehicleModel.message ?? "Server error occurred",
+                context,
+                color: false,
+              );
+              setState(() => createVehLoad = false);
+              return true;
+            }
+            if (postVehicleModel.success == true) {
+              showToast(
+                postVehicleModel.message ?? "Vehicle Created successfully",
+                context,
+                color: true,
+              );
+              setState(() {
+                createVehLoad = false;
+              });
+              Future.microtask(() {
+                widget.from == "addJobCard"
+                    ? Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              AddJobCard(isTablet: widget.isTablet),
+                        ),
+                      )
+                    : Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              const DashBoardScreen(selectedTab: 2),
+                        ),
+                      );
+              });
+            } else if (postVehicleModel.success == false) {
+              showToast(
+                postVehicleModel.message.toString(),
+                context,
+                color: true,
+              );
+              setState(() {
+                createVehLoad = false;
+              });
+            } else if (postVehicleModel.errorResponse != null) {
+              showToast(
+                postVehicleModel.errorResponse?.message ?? "An error occurred",
+                context,
+                color: false,
+              );
+              setState(() => createVehLoad = false);
+            }
+            return true;
+          }
           return false;
         }),
         builder: (context, dynamic) {
           return mainContainer();
         },
       ),
+    );
+  }
+
+  void _handle401Error() async {
+    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    await sharedPreferences.remove("token");
+    await sharedPreferences.clear();
+    showToast("Session expired. Please login again.", context, color: false);
+
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => LoginScreen()),
+      (Route<dynamic> route) => false,
     );
   }
 
@@ -448,7 +568,7 @@ class _AddVehicleViewState extends State<AddVehicleView> {
           ),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 700),
-            child: AddCustomer(isTablet: isTablet),
+            child: AddCustomer(isTablet: isTablet, from: "vehicle"),
           ),
         );
       },
@@ -462,6 +582,7 @@ class _AddVehicleViewState extends State<AddVehicleView> {
     String? hintText,
     TextInputType? keyboardType,
     int maxLines = 1,
+    bool isRequired = true,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -499,7 +620,9 @@ class _AddVehicleViewState extends State<AddVehicleView> {
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-            validator: (v) => v == null || v.isEmpty ? 'Required field' : null,
+            validator: isRequired
+                ? (v) => v == null || v.isEmpty ? 'Required field' : null
+                : null,
           ),
         ),
       ],

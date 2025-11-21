@@ -1,13 +1,20 @@
 import 'package:carwash/Alertbox/snackBarAlert.dart';
-import 'package:carwash/Bloc/demo/demo_bloc.dart';
+import 'package:carwash/Bloc/JobCards/job_card_bloc.dart';
+import 'package:carwash/ModelClass/Customer/getVehicleByCustomerModel.dart';
+import 'package:carwash/ModelClass/JobCard/getCustomerDropModel.dart';
 import 'package:carwash/Reusable/color.dart';
+import 'package:carwash/Reusable/space.dart';
+import 'package:carwash/UI/Authentication/login_screen.dart';
+import 'package:carwash/UI/DashBoard/DashBoard.dart';
 import 'package:carwash/UI/Landing/Customer/add_customer.dart';
 import 'package:carwash/UI/Landing/JobCard/search_text_controller.dart';
 import 'package:carwash/UI/Landing/Vehicle/add_vehicle.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AddJobCard extends StatelessWidget {
   final bool isTablet;
@@ -16,7 +23,7 @@ class AddJobCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => DemoBloc(),
+      create: (_) => JobCardBloc(),
       child: AddJobCardView(isTablet: isTablet),
     );
   }
@@ -32,12 +39,19 @@ class AddJobCardView extends StatefulWidget {
 
 class _AddJobCardViewState extends State<AddJobCardView>
     with SingleTickerProviderStateMixin {
+  GetCustomerDropModel getCustomerDropModel = GetCustomerDropModel();
+  GetVehicleByCustomerModel getVehicleByCustomerModel =
+      GetVehicleByCustomerModel();
   late TabController _tabController;
-
+  bool jobLoad = false;
+  bool vehLoad = false;
   // Controllers for searchable fields
   TextEditingController customerController = TextEditingController();
   TextEditingController vehicleController = TextEditingController();
-
+  String? email;
+  String? phone;
+  String? cusId;
+  String? regNo;
   String? selectedCustomer;
   String? selectedVehicle;
   String? selectedLocation;
@@ -62,25 +76,6 @@ class _AddJobCardViewState extends State<AddJobCardView>
   ];
 
   List<Map<String, dynamic>> selectedSpares = [];
-
-  final List<Map<String, String>> customers = [
-    {"name": "Prakash Prakash", "email": "", "phone": "8908907654"},
-    {
-      "name": "Saranya Thangaraj",
-      "email": "sentinix@gmail.com",
-      "phone": "8908907654",
-    },
-    {
-      "name": "Pradeep M",
-      "email": "pradeep@yopmail.com",
-      "phone": "8908907654",
-    },
-  ];
-
-  final List<Map<String, String>> vehicles = [
-    {"name": "Swift ZXI", "regNo": "TN-51-MP-1208"},
-    {"name": "Swift Vxi", "regNo": "TN-23-BC-2021"},
-  ];
   final List<String> locations = ["Chennai", "Madurai", "Coimbatore"];
   final List<String> statuses = ["Pending", "In Progress", "Completed"];
   void _toggleSpareSelection(Map<String, dynamic> spare) {
@@ -127,6 +122,10 @@ class _AddJobCardViewState extends State<AddJobCardView>
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     dateController.text = DateFormat('dd-MM-yyyy').format(DateTime.now());
+    context.read<JobCardBloc>().add(CustomerDrop());
+    setState(() {
+      jobLoad = true;
+    });
     for (int i = 0; i < availableSpares.length; i++) {
       _priceControllers[i] = TextEditingController(
         text: availableSpares[i]['price'].toStringAsFixed(2),
@@ -173,7 +172,7 @@ class _AddJobCardViewState extends State<AddJobCardView>
             child: TabBarView(
               controller: _tabController,
               children: [
-                _buildDetailsForm(widget.isTablet, textTheme),
+                _buildDetailsForm(widget.isTablet, textTheme, context),
                 _buildService(widget.isTablet),
                 _buildSpares(widget.isTablet),
                 const Center(child: Text("Summary content here")),
@@ -184,23 +183,101 @@ class _AddJobCardViewState extends State<AddJobCardView>
       );
     }
 
-    return Scaffold(
-      backgroundColor: appScaffoldBackground,
-      appBar: AppBar(
-        title: const Text(
-          "Create Job Card",
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        // Always navigate to Dashboard on back press
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (context) => const DashBoardScreen(selectedTab: 0),
+          ),
+          (route) => false,
+        );
+      },
+      child: Scaffold(
+        backgroundColor: appScaffoldBackground,
+        appBar: AppBar(
+          title: const Text(
+            "Create Job Card",
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
+          ),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(
+                  builder: (context) => const DashBoardScreen(selectedTab: 0),
+                ),
+                (route) => false,
+              );
+            },
+          ),
+          backgroundColor: whiteColor,
+          elevation: 0,
+          foregroundColor: blackColor87,
         ),
-        backgroundColor: whiteColor,
-        elevation: 0,
-        foregroundColor: blackColor87,
+        body: BlocBuilder<JobCardBloc, dynamic>(
+          buildWhen: ((previous, current) {
+            if (current is GetCustomerDropModel) {
+              getCustomerDropModel = current;
+              if (getCustomerDropModel.success == true) {
+                setState(() {
+                  jobLoad = false;
+                });
+              } else if (getCustomerDropModel.errorResponse != null) {
+                debugPrint(
+                  "Error: ${getCustomerDropModel.errorResponse?.message}",
+                );
+                setState(() {
+                  jobLoad = false;
+                });
+              }
+              if (getCustomerDropModel.errorResponse?.isUnauthorized == true) {
+                _handle401Error();
+                return true;
+              }
+              return true;
+            }
+            if (current is GetVehicleByCustomerModel) {
+              getVehicleByCustomerModel = current;
+              if (getVehicleByCustomerModel.success == true) {
+                setState(() {
+                  vehLoad = false;
+                });
+              } else if (getVehicleByCustomerModel.errorResponse != null) {
+                debugPrint(
+                  "Error: ${getVehicleByCustomerModel.errorResponse?.message}",
+                );
+                setState(() {
+                  vehLoad = false;
+                });
+              }
+              if (getVehicleByCustomerModel.errorResponse?.isUnauthorized ==
+                  true) {
+                _handle401Error();
+                return true;
+              }
+              return true;
+            }
+            return false;
+          }),
+          builder: (context, dynamic) {
+            return mainContainer();
+          },
+        ),
       ),
-      body: BlocBuilder<DemoBloc, dynamic>(
-        buildWhen: ((previous, current) => false),
-        builder: (context, dynamic) {
-          return mainContainer();
-        },
-      ),
+    );
+  }
+
+  void _handle401Error() async {
+    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    await sharedPreferences.remove("token");
+    await sharedPreferences.clear();
+    showToast("Session expired. Please login again.", context, color: false);
+
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => LoginScreen()),
+      (Route<dynamic> route) => false,
     );
   }
 
@@ -221,7 +298,7 @@ class _AddJobCardViewState extends State<AddJobCardView>
           ),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 700),
-            child: AddCustomer(isTablet: isTablet),
+            child: AddCustomer(isTablet: isTablet, from: "addJobCard"),
           ),
         );
       },
@@ -249,6 +326,7 @@ class _AddJobCardViewState extends State<AddJobCardView>
               isTablet: isTablet,
               from: "addJobCard",
               name: customerController.text,
+              cusId: cusId.toString(),
             ),
           ),
         );
@@ -257,7 +335,25 @@ class _AddJobCardViewState extends State<AddJobCardView>
   }
 
   /// Details Screen
-  Widget _buildDetailsForm(bool isTablet, TextTheme textTheme) {
+  Widget _buildDetailsForm(
+    bool isTablet,
+    TextTheme textTheme,
+    BuildContext pageContext,
+  ) {
+    if (getCustomerDropModel.result == null) {
+      return const Center(
+        child: SpinKitFadingCube(color: appPrimaryColor, size: 30),
+      );
+    }
+    final customers = getCustomerDropModel.result!.map((c) {
+      return {
+        "id": c.id,
+        "firstName": c.firstName ?? "",
+        "lastName": c.lastName ?? "",
+        "email": c.email ?? "",
+        "phone": c.phone ?? "",
+      };
+    }).toList();
     return SingleChildScrollView(
       padding: EdgeInsets.symmetric(
         horizontal: isTablet ? 60 : 16,
@@ -269,15 +365,26 @@ class _AddJobCardViewState extends State<AddJobCardView>
           _buildSearchableDropdown(
             label: "Customer",
             controller: customerController,
-            items: customers.map((c) => c['name']!).toList(),
+            items: customers
+                .map((c) => "${c['firstName']} ${c['lastName']}".trim())
+                .toList(),
             icon: Icons.person_outline,
-            onAddNew: () => _showAddCustomerDialog(context),
+            onAddNew: () {
+              debugPrint("ADD NEW PRESSED");
+              FocusScope.of(context).unfocus();
+              setState(() {});
+              _showAddCustomerDialog(context);
+            },
             displayBuilder: (index) {
+              final fullName =
+                  "${customers[index]['firstName']} ${customers[index]['lastName']}"
+                      .trim();
+
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    customers[index]['name']!,
+                    fullName,
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
@@ -293,9 +400,27 @@ class _AddJobCardViewState extends State<AddJobCardView>
               );
             },
             onItemSelected: (selectedItem) {
+              final selectedIndex = customers
+                  .map((c) => "${c['firstName']} ${c['lastName']}".trim())
+                  .toList()
+                  .indexOf(selectedItem);
+
+              if (selectedIndex == -1) return; // Safety check
+
               setState(() {
                 customerController.text = selectedItem;
-                debugPrint("Selected Customer: $selectedItem");
+                cusId = customers[selectedIndex]['id'] ?? "";
+                email = customers[selectedIndex]['email'] ?? "";
+                phone = customers[selectedIndex]['phone'] ?? "";
+                vehicleController.clear();
+                regNo = "";
+                getVehicleByCustomerModel = GetVehicleByCustomerModel(
+                  result: [],
+                  success: true,
+                );
+                context.read<JobCardBloc>().add(
+                  CustomerVehicle(cusId.toString()),
+                );
               });
             },
           ),
@@ -325,7 +450,7 @@ class _AddJobCardViewState extends State<AddJobCardView>
                     ),
                   ),
                   Text(
-                    "email",
+                    "$email",
                     style: const TextStyle(
                       fontSize: 12,
                       color: appSecondaryColor,
@@ -333,7 +458,7 @@ class _AddJobCardViewState extends State<AddJobCardView>
                     ),
                   ),
                   Text(
-                    "phone",
+                    "$phone",
                     style: const TextStyle(
                       fontSize: 12,
                       color: appSecondaryColor,
@@ -343,51 +468,89 @@ class _AddJobCardViewState extends State<AddJobCardView>
                 ],
               ),
             ),
-          const SizedBox(height: 20),
+          if (customerController.text.isEmpty) const SizedBox(height: 20),
+          if (customerController.text.isNotEmpty) ...[
+            const SizedBox(height: 20),
 
-          _buildSearchableDropdown(
-            label: "Vehicle",
-            controller: vehicleController,
-            items: vehicles.map((c) => c['name']!).toList(),
-            icon: Icons.directions_car_outlined,
-            onAddNew: () {
-              if (customerController.text.isEmpty) {
-                showToast(
-                  "Choose customer to add new vehicle",
-                  context,
-                  color: false,
-                );
-              } else {
-                _showAddVehiclesDialog(context);
-              }
-            },
-            displayBuilder: (index) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    vehicles[index]['name']!,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: appPrimaryColor,
+            _buildSearchableDropdown(
+              cusKey: ValueKey(cusId),
+              label: "Vehicle",
+              controller: vehicleController,
+              items: getVehicleByCustomerModel.result == null
+                  ? ["No vehicles found"]
+                  : getVehicleByCustomerModel.result!.isEmpty
+                  ? ["No vehicles found"]
+                  : getVehicleByCustomerModel.result!
+                        .map((v) => "${v.make} ${v.model}".trim())
+                        .toList(),
+              icon: Icons.directions_car_outlined,
+              onAddNew: () => _showAddVehiclesDialog(context),
+
+              displayBuilder: (index) {
+                final item =
+                    (getVehicleByCustomerModel.result == null ||
+                        getVehicleByCustomerModel.result!.isEmpty)
+                    ? "No vehicles found"
+                    : "${getVehicleByCustomerModel.result![index].make} ${getVehicleByCustomerModel.result![index].model}"
+                          .trim();
+
+                if (item == "No vehicles found") {
+                  return Center(
+                    child: const Text(
+                      "No vehicles found",
+                      style: TextStyle(color: greyColor, fontSize: 14),
                     ),
-                  ),
-                  if (vehicles[index]['regNo']!.isNotEmpty)
+                  );
+                }
+
+                final v = getVehicleByCustomerModel.result![index];
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      vehicles[index]['regNo']!,
-                      style: const TextStyle(fontSize: 12, color: greyColor),
+                      "${v.make} ${v.model}",
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: appPrimaryColor,
+                      ),
                     ),
-                ],
-              );
-            },
-            onItemSelected: (selectedItem) {
-              setState(() {
-                vehicleController.text = selectedItem;
-                debugPrint("Selected vehicles: $selectedItem");
-              });
-            },
-          ),
+                    if (v.registrationNumber?.isNotEmpty ?? false)
+                      Text(
+                        v.registrationNumber!,
+                        style: const TextStyle(fontSize: 12, color: greyColor),
+                      ),
+                  ],
+                );
+              },
+              onItemSelected: (selected) {
+                if (selected == "No vehicles found") {
+                  vehicleController.clear();
+                  regNo = "";
+                  return;
+                }
+                final list = getVehicleByCustomerModel.result;
+
+                if (list == null || list.isEmpty) return;
+
+                final match = list.where(
+                  (x) => "${x.make} ${x.model}".trim() == selected,
+                );
+
+                if (match.isEmpty) {
+                  return;
+                }
+
+                final v = match.first;
+
+                setState(() {
+                  vehicleController.text = selected;
+                  regNo = v.registrationNumber ?? "";
+                });
+              },
+            ),
+          ],
           if (vehicleController.text.isNotEmpty) const SizedBox(height: 10),
           if (vehicleController.text.isNotEmpty)
             Container(
@@ -414,7 +577,7 @@ class _AddJobCardViewState extends State<AddJobCardView>
                     ),
                   ),
                   Text(
-                    "regNo",
+                    "$regNo",
                     style: const TextStyle(
                       fontSize: 12,
                       color: appSecondaryColor,
@@ -422,7 +585,7 @@ class _AddJobCardViewState extends State<AddJobCardView>
                     ),
                   ),
                   Text(
-                    "phone",
+                    "Year:",
                     style: const TextStyle(
                       fontSize: 12,
                       color: appSecondaryColor,
@@ -505,6 +668,7 @@ class _AddJobCardViewState extends State<AddJobCardView>
 
   // Searchable Dropdown Widget
   Widget _buildSearchableDropdown({
+    Key? cusKey,
     required String label,
     required TextEditingController controller,
     required List<String> items,
@@ -521,8 +685,9 @@ class _AddJobCardViewState extends State<AddJobCardView>
           title: label,
           trailing: onAddNew != null ? _buildAddNewButton(onAddNew) : null,
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 20),
         SearchableTextField(
+          key: cusKey,
           controller: controller,
           items: items,
           hintText: "Search $label",
@@ -623,8 +788,12 @@ class _AddJobCardViewState extends State<AddJobCardView>
   }
 
   Widget _buildAddNewButton(VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
+    return GestureDetector(
+      onTap: () {
+        FocusScope.of(context).unfocus();
+        setState(() {});
+        onTap();
+      },
       child: Text(
         "+ Add New",
         style: TextStyle(

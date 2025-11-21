@@ -61,7 +61,7 @@ class _VehiclesPageViewState extends State<VehiclesPageView> {
     }
   }
 
-  void _showAddEditVehiclesDialog(BuildContext context) {
+  void _showAddEditVehiclesDialog(BuildContext context, String? vehId) {
     showDialog(
       context: context,
       barrierColor: greyColor.withOpacity(0.85),
@@ -80,8 +80,13 @@ class _VehiclesPageViewState extends State<VehiclesPageView> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 700),
             child: isEdit == true
-                ? EditVehicle(isTablet: isTablet)
-                : AddVehicle(isTablet: isTablet, from: "vehicle", name: ""),
+                ? EditVehicle(isTablet: isTablet, vehId: vehId.toString())
+                : AddVehicle(
+                    isTablet: isTablet,
+                    from: "vehicle",
+                    name: "",
+                    cusId: "",
+                  ),
           ),
         );
       },
@@ -228,7 +233,7 @@ class _VehiclesPageViewState extends State<VehiclesPageView> {
               onPressed: () {
                 setState(() {
                   isEdit = false;
-                  _showAddEditVehiclesDialog(context);
+                  _showAddEditVehiclesDialog(context, "");
                 });
               },
               style: ElevatedButton.styleFrom(
@@ -347,7 +352,7 @@ class _VehiclesPageViewState extends State<VehiclesPageView> {
                                 onTap: () {
                                   setState(() {
                                     isEdit = true;
-                                    _showAddEditVehiclesDialog(context);
+                                    _showAddEditVehiclesDialog(context, job.id);
                                   });
                                 },
                                 child: Icon(
@@ -456,7 +461,7 @@ class _VehiclesPageViewState extends State<VehiclesPageView> {
                             onTap: () {
                               setState(() {
                                 isEdit = true;
-                                _showAddEditVehiclesDialog(context);
+                                _showAddEditVehiclesDialog(context, job?.id);
                               });
                             },
                             child: Icon(

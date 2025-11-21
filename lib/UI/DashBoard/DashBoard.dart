@@ -178,245 +178,157 @@ class _DashBoardScreenViewState extends State<DashBoardScreenView> {
     }
 
     return isTabletOrDesktop
-        ? Scaffold(
-            body: BlocBuilder<ShopDetailsBloc, dynamic>(
-              buildWhen: ((previous, current) {
-                if (current is GetShopDetailsModel) {
-                  getShopDetailsModel = current;
-                  if (getShopDetailsModel.success == true) {
-                    setState(() {
-                      shopLoad = false;
-                    });
-                  } else if (getShopDetailsModel.errorResponse != null) {
-                    debugPrint(
-                      "Error: ${getShopDetailsModel.errorResponse?.message}",
-                    );
-                    setState(() {
-                      shopLoad = false;
-                    });
-                  }
-                  if (getShopDetailsModel.errorResponse?.isUnauthorized ==
-                      true) {
-                    _handle401Error();
+        ? PopScope(
+            canPop: selectedIndex == 0,
+            onPopInvokedWithResult: (didPop, result) {
+              if (didPop) {
+                if (selectedIndex == 0) {
+                  debugPrint("Pop action was Unblocked.");
+                  Navigator.pop(context);
+                }
+              } else {
+                debugPrint("Pop action was blocked.");
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(
+                    builder: (context) => const DashBoardScreen(),
+                  ),
+                  (Route<dynamic> route) => false,
+                );
+              }
+            },
+            child: Scaffold(
+              body: BlocBuilder<ShopDetailsBloc, dynamic>(
+                buildWhen: ((previous, current) {
+                  if (current is GetShopDetailsModel) {
+                    getShopDetailsModel = current;
+                    if (getShopDetailsModel.success == true) {
+                      setState(() {
+                        shopLoad = false;
+                      });
+                    } else if (getShopDetailsModel.errorResponse != null) {
+                      debugPrint(
+                        "Error: ${getShopDetailsModel.errorResponse?.message}",
+                      );
+                      setState(() {
+                        shopLoad = false;
+                      });
+                    }
+                    if (getShopDetailsModel.errorResponse?.isUnauthorized ==
+                        true) {
+                      _handle401Error();
+                      return true;
+                    }
                     return true;
                   }
-                  return true;
-                }
-                return false;
-              }),
-              builder: (context, dynamic) {
-                return mainContainer();
-              },
+                  return false;
+                }),
+                builder: (context, dynamic) {
+                  return mainContainer();
+                },
+              ),
             ),
           )
-        : Scaffold(
-            appBar: AppBar(
-              backgroundColor: appPrimaryColor.withOpacity(0.9),
-              iconTheme: const IconThemeData(color: whiteColor),
-              title: shopLoad
-                  ? SpinKitRipple(color: whiteColor, size: 30)
-                  : Text(
-                      getShopDetailsModel.result?.shopName ?? "",
-                      style: TextStyle(
-                        color: whiteColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-              actions: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 16, right: 16),
-                  child: Column(
-                    children: [
-                      Text(
-                        "$firstName $lastName",
-                        style: const TextStyle(
+        : PopScope(
+            canPop: selectedIndex == 0,
+            onPopInvokedWithResult: (didPop, result) {
+              if (didPop) {
+                if (selectedIndex == 0) {
+                  debugPrint("Pop action was Unblocked.");
+                  Navigator.pop(context);
+                }
+              } else {
+                debugPrint("Pop action was blocked.");
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(
+                    builder: (context) => const DashBoardScreen(),
+                  ),
+                  (Route<dynamic> route) => false,
+                );
+              }
+            },
+            child: Scaffold(
+              appBar: AppBar(
+                backgroundColor: appPrimaryColor.withOpacity(0.9),
+                iconTheme: const IconThemeData(color: whiteColor),
+                title: shopLoad
+                    ? SpinKitRipple(color: whiteColor, size: 30)
+                    : Text(
+                        getShopDetailsModel.result?.shopName ?? "",
+                        style: TextStyle(
                           color: whiteColor,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
                         ),
                       ),
-                      Text(
-                        "$role",
-                        style: const TextStyle(
-                          color: whiteColor70,
-                          fontSize: 12,
+                actions: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16, right: 16),
+                    child: Column(
+                      children: [
+                        Text(
+                          "$firstName $lastName",
+                          style: const TextStyle(
+                            color: whiteColor,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
+                        Text(
+                          "$role",
+                          style: const TextStyle(
+                            color: whiteColor70,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              drawer: Drawer(
+                backgroundColor: appPrimaryColor,
+                child: SafeArea(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeader(),
+                      const SizedBox(height: 10),
+                      Expanded(child: _buildMenuList(isTabletOrDesktop)),
+                      _buildLogoutButton(),
                     ],
                   ),
                 ),
-              ],
-            ),
-            drawer: Drawer(
-              backgroundColor: appPrimaryColor,
-              child: SafeArea(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeader(),
-                    const SizedBox(height: 10),
-                    Expanded(child: _buildMenuList(isTabletOrDesktop)),
-                    _buildLogoutButton(),
-                  ],
-                ),
               ),
-            ),
-            body: BlocBuilder<ShopDetailsBloc, dynamic>(
-              buildWhen: ((previous, current) {
-                if (current is GetShopDetailsModel) {
-                  getShopDetailsModel = current;
-                  if (getShopDetailsModel.success == true) {
-                    setState(() {
-                      shopLoad = false;
-                    });
-                  } else if (getShopDetailsModel.errorResponse != null) {
-                    debugPrint(
-                      "Error: ${getShopDetailsModel.errorResponse?.message}",
-                    );
-                    setState(() {
-                      shopLoad = false;
-                    });
-                  }
-                  if (getShopDetailsModel.errorResponse?.isUnauthorized ==
-                      true) {
-                    _handle401Error();
+              body: BlocBuilder<ShopDetailsBloc, dynamic>(
+                buildWhen: ((previous, current) {
+                  if (current is GetShopDetailsModel) {
+                    getShopDetailsModel = current;
+                    if (getShopDetailsModel.success == true) {
+                      setState(() {
+                        shopLoad = false;
+                      });
+                    } else if (getShopDetailsModel.errorResponse != null) {
+                      debugPrint(
+                        "Error: ${getShopDetailsModel.errorResponse?.message}",
+                      );
+                      setState(() {
+                        shopLoad = false;
+                      });
+                    }
+                    if (getShopDetailsModel.errorResponse?.isUnauthorized ==
+                        true) {
+                      _handle401Error();
+                      return true;
+                    }
                     return true;
                   }
-                  return true;
-                }
-                return false;
-              }),
-              builder: (context, dynamic) {
-                return mainContainer();
-              },
+                  return false;
+                }),
+                builder: (context, dynamic) {
+                  return mainContainer();
+                },
+              ),
             ),
-            // if (isTabletOrDesktop) {
-            //   return Scaffold(
-            //     body: Column(
-            //       children: [
-            //         // 🟣 Add top AppBar for tablet/desktop
-            //         Container(
-            //           color: appPrimaryColor.withOpacity(0.9),
-            //           height: 60,
-            //           padding: const EdgeInsets.only(top: 16, left: 16, right: 16),
-            //           child: Row(
-            //             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            //             children: [
-            //               Row(
-            //                 children: [
-            //                   Icon(Icons.handyman, color: orangeColor),
-            //                   SizedBox(width: 10),
-            //                   Text(
-            //                     "Rolex Car Workshop",
-            //                     style: TextStyle(
-            //                       color: whiteColor,
-            //                       fontWeight: FontWeight.bold,
-            //                       fontSize: 18,
-            //                     ),
-            //                   ),
-            //                 ],
-            //               ),
-            //               Column(
-            //                 children: [
-            //                   Text(
-            //                     "$firstName $lastName",
-            //                     style: const TextStyle(
-            //                       color: whiteColor,
-            //                       fontSize: 14,
-            //                       fontWeight: FontWeight.w600,
-            //                     ),
-            //                   ),
-            //                   Text(
-            //                     "$role",
-            //                     style: const TextStyle(
-            //                       color: whiteColor70,
-            //                       fontSize: 13,
-            //                     ),
-            //                   ),
-            //                 ],
-            //               ),
-            //             ],
-            //           ),
-            //         ),
-            //         Expanded(
-            //           child: Row(
-            //             children: [
-            //               Container(
-            //                 width: 250,
-            //                 color: appPrimaryColor,
-            //                 child: Column(
-            //                   crossAxisAlignment: CrossAxisAlignment.start,
-            //                   children: [
-            //                     //_buildHeader(),
-            //                     const SizedBox(height: 10),
-            //                     Expanded(child: _buildMenuList(isTabletOrDesktop)),
-            //                     _buildLogoutButton(),
-            //                   ],
-            //                 ),
-            //               ),
-            //               Expanded(
-            //                 child: Container(
-            //                   color: whiteColor,
-            //                   child: pages[selectedIndex],
-            //                 ),
-            //               ),
-            //             ],
-            //           ),
-            //         ),
-            //       ],
-            //     ),
-            //   );
-            // } else {
-            //   return Scaffold(
-            //     appBar: AppBar(
-            //       backgroundColor: appPrimaryColor.withOpacity(0.9),
-            //       iconTheme: const IconThemeData(color: whiteColor),
-            //       title: const Text(
-            //         'Rolex car workshop',
-            //         style: TextStyle(
-            //           color: whiteColor,
-            //           fontWeight: FontWeight.bold,
-            //           fontSize: 16,
-            //         ),
-            //       ),
-            //       actions: [
-            //         Padding(
-            //           padding: const EdgeInsets.only(top: 16, right: 16),
-            //           child: Column(
-            //             children: [
-            //               Text(
-            //                 "$firstName $lastName",
-            //                 style: const TextStyle(
-            //                   color: whiteColor,
-            //                   fontSize: 14,
-            //                   fontWeight: FontWeight.w600,
-            //                 ),
-            //               ),
-            //               Text(
-            //                 "$role",
-            //                 style: const TextStyle(color: whiteColor70, fontSize: 12),
-            //               ),
-            //             ],
-            //           ),
-            //         ),
-            //       ],
-            //     ),
-            //     drawer: Drawer(
-            //       backgroundColor: appPrimaryColor,
-            //       child: SafeArea(
-            //         child: Column(
-            //           crossAxisAlignment: CrossAxisAlignment.start,
-            //           children: [
-            //             _buildHeader(),
-            //             const SizedBox(height: 10),
-            //             Expanded(child: _buildMenuList(isTabletOrDesktop)),
-            //             _buildLogoutButton(),
-            //           ],
-            //         ),
-            //       ),
-            //     ),
-            //     body: Container(color: whiteColor, child: pages[selectedIndex]),
           );
   }
 

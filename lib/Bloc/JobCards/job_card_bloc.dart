@@ -9,39 +9,12 @@ class JobCardList extends JobCardEvent {
   JobCardList(this.searchKey, this.offset);
 }
 
-// class FoodProductItem extends CustomerEvent {
-//   String catId;
-//   String searchKey;
-//   String searchCode;
-//   String limit;
-//   String offset;
-//   FoodProductItem(
-//       this.catId, this.searchKey, this.searchCode, this.limit, this.offset);
-// }
+class CustomerDrop extends JobCardEvent {}
 
-// class AddToBilling extends FoodCategoryEvent {
-//   List<Map<String, dynamic>> billingItems;
-//   bool? isDiscount;
-//   final OrderType? orderType;
-//   AddToBilling(this.billingItems, this.isDiscount, this.orderType);
-// }
-//
-// class GenerateOrder extends FoodCategoryEvent {
-//   final String orderPayloadJson;
-//   GenerateOrder(this.orderPayloadJson);
-// }
-//
-// class UpdateOrder extends FoodCategoryEvent {
-//   final String orderPayloadJson;
-//   String? orderId;
-//   UpdateOrder(this.orderPayloadJson, this.orderId);
-// }
-//
-// class TableDine extends FoodCategoryEvent {}
-//
-// class WaiterDine extends FoodCategoryEvent {}
-//
-// class StockDetails extends FoodCategoryEvent {}
+class CustomerVehicle extends JobCardEvent {
+  String cusId;
+  CustomerVehicle(this.cusId);
+}
 
 class JobCardBloc extends Bloc<JobCardEvent, dynamic> {
   JobCardBloc() : super(dynamic) {
@@ -49,78 +22,31 @@ class JobCardBloc extends Bloc<JobCardEvent, dynamic> {
       await ApiProvider()
           .getAllJobCardAPI(event.searchKey, event.offset)
           .then((value) {
-        emit(value);
-      })
+            emit(value);
+          })
           .catchError((error) {
-        emit(error);
-      });
+            emit(error);
+          });
     });
-    //   on<FoodProductItem>((event, emit) async {
-    //     await ApiProvider()
-    //         .getProductItemAPI(
-    //       event.catId,
-    //       event.searchKey,
-    //       event.searchCode,
-    //       event.limit,
-    //       event.offset,
-    //     )
-    //         .then((value) {
-    //       emit(value);
-    //     }).catchError((error) {
-    //       emit(error);
-    //     });
-    //   });
-    //   on<AddToBilling>((event, emit) async {
-    //     await ApiProvider()
-    //         .postAddToBillingAPI(
-    //       event.billingItems,
-    //       event.isDiscount,
-    //       event.orderType?.apiValue,
-    //     )
-    //         .then((value) {
-    //       emit(value);
-    //     }).catchError((error) {
-    //       emit(error);
-    //     });
-    //   });
-    //   on<GenerateOrder>((event, emit) async {
-    //     await ApiProvider()
-    //         .postGenerateOrderAPI(event.orderPayloadJson)
-    //         .then((value) {
-    //       emit(value);
-    //     }).catchError((error) {
-    //       emit(error);
-    //     });
-    //   });
-    //   on<UpdateOrder>((event, emit) async {
-    //     await ApiProvider()
-    //         .updateGenerateOrderAPI(event.orderPayloadJson, event.orderId)
-    //         .then((value) {
-    //       emit(value);
-    //     }).catchError((error) {
-    //       emit(error);
-    //     });
-    //   });
-    //   on<TableDine>((event, emit) async {
-    //     await ApiProvider().getTableAPI().then((value) {
-    //       emit(value);
-    //     }).catchError((error) {
-    //       emit(error);
-    //     });
-    //   });
-    //   on<WaiterDine>((event, emit) async {
-    //     await ApiProvider().getWaiterAPI().then((value) {
-    //       emit(value);
-    //     }).catchError((error) {
-    //       emit(error);
-    //     });
-    //   });
-    //   on<StockDetails>((event, emit) async {
-    //     await ApiProvider().getStockDetailsAPI().then((value) {
-    //       emit(value);
-    //     }).catchError((error) {
-    //       emit(error);
-    //     });
-    //   });
+    on<CustomerDrop>((event, emit) async {
+      await ApiProvider()
+          .getCustomerDropAPI()
+          .then((value) {
+            emit(value);
+          })
+          .catchError((error) {
+            emit(error);
+          });
+    });
+    on<CustomerVehicle>((event, emit) async {
+      await ApiProvider()
+          .getVehicleByCustomerAPI(event.cusId)
+          .then((value) {
+            emit(value);
+          })
+          .catchError((error) {
+            emit(error);
+          });
+    });
   }
 }
