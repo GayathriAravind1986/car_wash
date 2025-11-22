@@ -16,6 +16,15 @@ class CustomerVehicle extends JobCardEvent {
   CustomerVehicle(this.cusId);
 }
 
+class LocationDrop extends JobCardEvent {}
+
+class ServiceList extends JobCardEvent {}
+
+class SpareList extends JobCardEvent {
+  String locId;
+  SpareList(this.locId);
+}
+
 class JobCardBloc extends Bloc<JobCardEvent, dynamic> {
   JobCardBloc() : super(dynamic) {
     on<JobCardList>((event, emit) async {
@@ -41,6 +50,36 @@ class JobCardBloc extends Bloc<JobCardEvent, dynamic> {
     on<CustomerVehicle>((event, emit) async {
       await ApiProvider()
           .getVehicleByCustomerAPI(event.cusId)
+          .then((value) {
+            emit(value);
+          })
+          .catchError((error) {
+            emit(error);
+          });
+    });
+    on<LocationDrop>((event, emit) async {
+      await ApiProvider()
+          .getLocationAPI()
+          .then((value) {
+            emit(value);
+          })
+          .catchError((error) {
+            emit(error);
+          });
+    });
+    on<ServiceList>((event, emit) async {
+      await ApiProvider()
+          .getAllServiceAPI()
+          .then((value) {
+            emit(value);
+          })
+          .catchError((error) {
+            emit(error);
+          });
+    });
+    on<SpareList>((event, emit) async {
+      await ApiProvider()
+          .getAllSpareAPI(event.locId)
           .then((value) {
             emit(value);
           })

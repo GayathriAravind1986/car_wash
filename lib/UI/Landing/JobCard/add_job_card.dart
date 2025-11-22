@@ -1,9 +1,11 @@
 import 'package:carwash/Alertbox/snackBarAlert.dart';
 import 'package:carwash/Bloc/JobCards/job_card_bloc.dart';
 import 'package:carwash/ModelClass/Customer/getVehicleByCustomerModel.dart';
+import 'package:carwash/ModelClass/JobCard/getAllServiceModel.dart' as svc;
+import 'package:carwash/ModelClass/JobCard/getAllSpareModel.dart' as spa;
 import 'package:carwash/ModelClass/JobCard/getCustomerDropModel.dart';
+import 'package:carwash/ModelClass/JobCard/getLocationModel.dart';
 import 'package:carwash/Reusable/color.dart';
-import 'package:carwash/Reusable/space.dart';
 import 'package:carwash/UI/Authentication/login_screen.dart';
 import 'package:carwash/UI/DashBoard/DashBoard.dart';
 import 'package:carwash/UI/Landing/Customer/add_customer.dart';
@@ -42,40 +44,36 @@ class _AddJobCardViewState extends State<AddJobCardView>
   GetCustomerDropModel getCustomerDropModel = GetCustomerDropModel();
   GetVehicleByCustomerModel getVehicleByCustomerModel =
       GetVehicleByCustomerModel();
+  GetLocationModel getLocationModel = GetLocationModel();
+  svc.GetAllServiceModel getAllServiceModel = svc.GetAllServiceModel();
+  spa.GetAllSpareModel getAllSpareModel = spa.GetAllSpareModel();
   late TabController _tabController;
   bool jobLoad = false;
   bool vehLoad = false;
   // Controllers for searchable fields
   TextEditingController customerController = TextEditingController();
   TextEditingController vehicleController = TextEditingController();
+  TextEditingController locationController = TextEditingController();
+  TextEditingController searchServiceController = TextEditingController();
   String? email;
   String? phone;
   String? cusId;
   String? regNo;
-  String? selectedCustomer;
-  String? selectedVehicle;
-  String? selectedLocation;
+  String? locId;
   String? selectedStatus = "Pending";
   TextEditingController dateController = TextEditingController();
   TextEditingController notesController = TextEditingController();
   TextEditingController searchController = TextEditingController();
   final Map<int, TextEditingController> _priceControllers = {};
-  List<Map<String, dynamic>> availableServices = [
-    {"name": "Water wash", "price": 500.0},
-    {"name": "Wheel Alignment", "price": 2000.0},
-    {"name": "Oil Change", "price": 800.0},
-  ];
 
-  List<Map<String, dynamic>> selectedServices = [];
+  List<svc.Result> selectedServices = [];
+  List<svc.Result> allServices = [];
+  List<svc.Result> filteredServices = [];
 
-  List<Map<String, dynamic>> availableSpares = [
-    {'name': 'Bolt', 'part': '123', 'stock': 10, 'price': 10.0},
-    {'name': 'Brake oil', 'part': '89200KPL', 'stock': 90, 'price': 150.0},
-    {'name': 'Clutch pad', 'part': '029902', 'stock': 0, 'price': 100.0},
-    {'name': 'Wheel', 'part': '12', 'stock': 5, 'price': 5000.0},
-  ];
-
+  List<Map<String, dynamic>> allSpares = [];
+  List<Map<String, dynamic>> filteredSpares = [];
   List<Map<String, dynamic>> selectedSpares = [];
+  double totalPrice = 0.0;
   final List<String> locations = ["Chennai", "Madurai", "Coimbatore"];
   final List<String> statuses = ["Pending", "In Progress", "Completed"];
   void _toggleSpareSelection(Map<String, dynamic> spare) {
@@ -89,6 +87,7 @@ class _AddJobCardViewState extends State<AddJobCardView>
     } else if (existingIndex != -1) {
       setState(() {
         selectedSpares.removeAt(existingIndex);
+        _priceControllers.clear();
       });
     }
   }
@@ -107,6 +106,7 @@ class _AddJobCardViewState extends State<AddJobCardView>
         selectedSpares[index]['qty']--;
       } else {
         selectedSpares.removeAt(index);
+        _priceControllers.clear();
       }
     });
   }
@@ -114,7 +114,15 @@ class _AddJobCardViewState extends State<AddJobCardView>
   void _removeSelected(int index) {
     setState(() {
       selectedSpares.removeAt(index);
+      _priceControllers.clear();
     });
+  }
+
+  void _recalculateTotal() {
+    totalPrice = selectedSpares.fold<double>(
+      0.0,
+      (sum, spare) => sum + (spare['price'] as double? ?? 0.0),
+    );
   }
 
   @override
@@ -123,12 +131,15 @@ class _AddJobCardViewState extends State<AddJobCardView>
     _tabController = TabController(length: 4, vsync: this);
     dateController.text = DateFormat('dd-MM-yyyy').format(DateTime.now());
     context.read<JobCardBloc>().add(CustomerDrop());
+    context.read<JobCardBloc>().add(LocationDrop());
+    context.read<JobCardBloc>().add(ServiceList());
+
     setState(() {
       jobLoad = true;
     });
-    for (int i = 0; i < availableSpares.length; i++) {
+    for (int i = 0; i < filteredSpares.length; i++) {
       _priceControllers[i] = TextEditingController(
-        text: availableSpares[i]['price'].toStringAsFixed(2),
+        text: filteredSpares[i]['price'].toStringAsFixed(2),
       );
     }
   }
@@ -137,6 +148,7 @@ class _AddJobCardViewState extends State<AddJobCardView>
   void dispose() {
     customerController.dispose();
     vehicleController.dispose();
+    locationController.dispose();
     dateController.dispose();
     notesController.dispose();
     _tabController.dispose();
@@ -259,6 +271,80 @@ class _AddJobCardViewState extends State<AddJobCardView>
               }
               return true;
             }
+            if (current is GetLocationModel) {
+              getLocationModel = current;
+              if (getLocationModel.success == true) {
+                setState(() {
+                  jobLoad = false;
+                });
+              } else if (getLocationModel.errorResponse != null) {
+                debugPrint("Error: ${getLocationModel.errorResponse?.message}");
+                setState(() {
+                  jobLoad = false;
+                });
+              }
+              if (getLocationModel.errorResponse?.isUnauthorized == true) {
+                _handle401Error();
+                return true;
+              }
+              return true;
+            }
+            if (current is svc.GetAllServiceModel) {
+              getAllServiceModel = current;
+              if (getAllServiceModel.success == true) {
+                if (getAllServiceModel.result != null) {
+                  allServices = getAllServiceModel.result!;
+                  filteredServices = List.from(allServices);
+                }
+                setState(() {
+                  jobLoad = false;
+                });
+              } else if (getAllServiceModel.errorResponse != null) {
+                debugPrint(
+                  "Error: ${getAllServiceModel.errorResponse?.message}",
+                );
+
+                setState(() {
+                  jobLoad = false;
+                });
+              }
+              if (getAllServiceModel.errorResponse?.isUnauthorized == true) {
+                _handle401Error();
+                return true;
+              }
+              return true;
+            }
+            if (current is spa.GetAllSpareModel) {
+              getAllSpareModel = current;
+              if (getAllSpareModel.success == true) {
+                if (getAllSpareModel.result != null) {
+                  allSpares = getAllSpareModel.result!.map((spare) {
+                    return {
+                      'id': spare.id,
+                      'name': spare.name ?? "",
+                      'part': spare.partNumber ?? "",
+                      'stock': spare.inStock ?? 0,
+                      'price': double.tryParse(spare.unitPrice ?? "0") ?? 0.0,
+                    };
+                  }).toList();
+
+                  filteredSpares = List.from(allSpares);
+                }
+                setState(() {
+                  jobLoad = false;
+                });
+              } else if (getAllSpareModel.errorResponse != null) {
+                debugPrint("Error: ${getAllSpareModel.errorResponse?.message}");
+                setState(() {
+                  jobLoad = false;
+                });
+              }
+              if (getAllSpareModel.errorResponse?.isUnauthorized == true) {
+                _handle401Error();
+                return true;
+              }
+              return true;
+            }
             return false;
           }),
           builder: (context, dynamic) {
@@ -352,6 +438,20 @@ class _AddJobCardViewState extends State<AddJobCardView>
         "lastName": c.lastName ?? "",
         "email": c.email ?? "",
         "phone": c.phone ?? "",
+      };
+    }).toList();
+    if (getLocationModel.result == null) {
+      return const Center(
+        child: SpinKitFadingCube(color: appPrimaryColor, size: 30),
+      );
+    }
+    final locations = getLocationModel.result!.map((l) {
+      return {
+        "id": l.id,
+        "locationName": l.locationName ?? "",
+        "address": l.addressLine1 ?? "",
+        "city": l.city ?? "",
+        "state": l.state ?? "",
       };
     }).toList();
     return SingleChildScrollView(
@@ -596,12 +696,70 @@ class _AddJobCardViewState extends State<AddJobCardView>
               ),
             ),
           const SizedBox(height: 20),
+          _buildSearchableDropdown(
+            label: "Service Location *",
+            controller: locationController,
+            items: locations.map((c) => "${c['locationName']}".trim()).toList(),
+            icon: Icons.person_outline,
+            onAddNew: null,
+            displayBuilder: (index) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    locations[index]['locationName']!,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: appPrimaryColor,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      if (locations[index]['address']!.isNotEmpty)
+                        Text(
+                          locations[index]['address']!,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: greyColor,
+                          ),
+                        ),
+                      if (locations[index]['city']!.isNotEmpty)
+                        Text(
+                          ",${locations[index]['city']!}",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: greyColor,
+                          ),
+                        ),
+                      if (locations[index]['state']!.isNotEmpty)
+                        Text(
+                          ",${locations[index]['state']!}",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: greyColor,
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              );
+            },
+            onItemSelected: (selectedItem) {
+              final selectedIndex = locations
+                  .map((c) => "${c['locationName']}".trim())
+                  .toList()
+                  .indexOf(selectedItem);
 
-          _buildDropdown(
-            label: "Select Location *",
-            value: selectedLocation,
-            items: locations,
-            onChanged: (v) => setState(() => selectedLocation = v),
+              if (selectedIndex == -1) return; // Safety check
+
+              setState(() {
+                locationController.text = selectedItem;
+                locId = locations[selectedIndex]['id'] ?? "";
+              });
+              debugPrint("locId:$locId");
+              context.read<JobCardBloc>().add(SpareList(locId.toString()));
+            },
           ),
           const SizedBox(height: 20),
 
@@ -821,6 +979,11 @@ class _AddJobCardViewState extends State<AddJobCardView>
 
   /// Service Screen
   Widget _buildService(bool isTablet) {
+    if (getAllServiceModel.result == null) {
+      return const Center(
+        child: SpinKitFadingCube(color: appPrimaryColor, size: 30),
+      );
+    }
     return Padding(
       padding: EdgeInsets.all(isTablet ? 24 : 12),
       child: isTablet
@@ -853,6 +1016,7 @@ class _AddJobCardViewState extends State<AddJobCardView>
         children: [
           // 🔍 Search box just below the title
           TextField(
+            controller: searchServiceController,
             decoration: InputDecoration(
               hintText: 'Search services...',
               prefixIcon: const Icon(Icons.search),
@@ -874,15 +1038,14 @@ class _AddJobCardViewState extends State<AddJobCardView>
               ),
             ),
             onChanged: (value) {
-              // optional: implement search filter logic
               setState(() {
-                // availableServices = availableServices
-                //     .where(
-                //       (service) => service['name'].toLowerCase().contains(
-                //         value.toLowerCase(),
-                //       ),
-                //     )
-                //     .toList();
+                filteredServices = allServices
+                    .where(
+                      (service) => (service.name ?? "").toLowerCase().contains(
+                        value.toLowerCase(),
+                      ),
+                    )
+                    .toList();
               });
             },
           ),
@@ -891,7 +1054,7 @@ class _AddJobCardViewState extends State<AddJobCardView>
           // 🧾 Scrollable service list
           SingleChildScrollView(
             child: Column(
-              children: availableServices.map((service) {
+              children: filteredServices.map((svc.Result service) {
                 bool isSelected = selectedServices.contains(service);
                 return GestureDetector(
                   onTap: () => _toggleSelection(service),
@@ -911,13 +1074,13 @@ class _AddJobCardViewState extends State<AddJobCardView>
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          service['name'],
+                          service.name.toString(),
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        Text("₹${service['price'].toStringAsFixed(2)}"),
+                        Text("₹${service.price?.toStringAsFixed(2)}"),
                       ],
                     ),
                   ),
@@ -933,9 +1096,8 @@ class _AddJobCardViewState extends State<AddJobCardView>
   Widget _buildSelectedServicesCard() {
     final total = selectedServices.fold<double>(
       0.0,
-      (sum, item) => sum + (item['price'] as double),
+      (sum, item) => sum + (item.price as num).toDouble(),
     );
-
     return _buildCard(
       title: "Selected Services (${selectedServices.length})",
       child: AnimatedContainer(
@@ -952,7 +1114,9 @@ class _AddJobCardViewState extends State<AddJobCardView>
                     const Icon(Icons.info_outline, size: 20, color: greyColor),
                     const SizedBox(height: 8),
                     Text(
-                      "Select services from the left panel",
+                      widget.isTablet
+                          ? "Select services from the left panel"
+                          : "Select services from the top panel",
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 16,
@@ -981,13 +1145,13 @@ class _AddJobCardViewState extends State<AddJobCardView>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                service['name'],
+                                service.name.toString(),
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
-                              Text("₹${service['price'].toStringAsFixed(2)}"),
+                              Text("₹${service.price?.toStringAsFixed(2)}"),
                             ],
                           ),
                           GestureDetector(
@@ -1054,7 +1218,7 @@ class _AddJobCardViewState extends State<AddJobCardView>
     );
   }
 
-  void _toggleSelection(Map<String, dynamic> service) {
+  void _toggleSelection(svc.Result service) {
     setState(() {
       if (selectedServices.contains(service)) {
         selectedServices.remove(service);
@@ -1066,6 +1230,9 @@ class _AddJobCardViewState extends State<AddJobCardView>
 
   /// spares screen
   Widget _buildSpares(bool isTablet) {
+    if (getAllSpareModel.result == null) {
+      return const Center(child: Text('Select a location to view spares'));
+    }
     return Padding(
       padding: EdgeInsets.all(isTablet ? 24 : 12),
       child: isTablet
@@ -1102,13 +1269,25 @@ class _AddJobCardViewState extends State<AddJobCardView>
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
+            onChanged: (value) {
+              setState(() {
+                filteredSpares = allSpares.where((spare) {
+                  final name = spare['name'].toString().toLowerCase();
+                  final part = spare['part'].toString().toLowerCase();
+
+                  return name.contains(value.toLowerCase()) ||
+                      part.contains(value.toLowerCase());
+                }).toList();
+              });
+            },
           ),
           const SizedBox(height: 10),
           Expanded(
             child: ListView.builder(
-              itemCount: availableSpares.length,
+              shrinkWrap: true,
+              itemCount: filteredSpares.length,
               itemBuilder: (context, index) {
-                final spare = availableSpares[index];
+                final spare = filteredSpares[index];
                 final isSelected = selectedSpares.any(
                   (selected) => selected['part'] == spare['part'],
                 );
@@ -1186,9 +1365,15 @@ class _AddJobCardViewState extends State<AddJobCardView>
             child: selectedSpares.isEmpty
                 ? const Center(child: Text('No spares selected yet'))
                 : ListView.builder(
+                    shrinkWrap: true,
                     itemCount: selectedSpares.length,
                     itemBuilder: (context, index) {
                       final spare = selectedSpares[index];
+                      if (!_priceControllers.containsKey(index)) {
+                        _priceControllers[index] = TextEditingController(
+                          text: spare['price'].toString(),
+                        );
+                      }
                       return Container(
                         margin: const EdgeInsets.symmetric(vertical: 6),
                         padding: const EdgeInsets.all(12),
@@ -1306,12 +1491,14 @@ class _AddJobCardViewState extends State<AddJobCardView>
                                                 ),
                                               ),
                                         ),
-                                        onChanged: (v) {
-                                          final value =
-                                              double.tryParse(v) ??
-                                              spare['price'];
+                                        onChanged: (value) {
+                                          final price =
+                                              double.tryParse(value.trim()) ??
+                                              0.0;
+
                                           setState(() {
-                                            spare['price'] = value;
+                                            spare['price'] = price;
+                                            _recalculateTotal(); // Update your total immediately
                                           });
                                         },
                                       ),
@@ -1404,7 +1591,7 @@ class _AddJobCardViewState extends State<AddJobCardView>
             ),
             const SizedBox(height: 12),
             SizedBox(
-              height: MediaQuery.of(context).size.height * 0.6,
+              height: MediaQuery.of(context).size.height * 0.48,
               child: child,
             ),
           ],

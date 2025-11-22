@@ -7,7 +7,10 @@ import 'package:carwash/ModelClass/Customer/getVehicleByCustomerModel.dart';
 import 'package:carwash/ModelClass/Customer/postCustomerModel.dart';
 import 'package:carwash/ModelClass/Customer/updateCustomerModel.dart';
 import 'package:carwash/ModelClass/JobCard/getAllJobCardModel.dart';
+import 'package:carwash/ModelClass/JobCard/getAllServiceModel.dart';
+import 'package:carwash/ModelClass/JobCard/getAllSpareModel.dart';
 import 'package:carwash/ModelClass/JobCard/getCustomerDropModel.dart';
+import 'package:carwash/ModelClass/JobCard/getLocationModel.dart';
 import 'package:carwash/ModelClass/ShopDetails/getShopDetailsModel.dart';
 import 'package:carwash/ModelClass/Vehicle/getAllVehiclesModel.dart';
 import 'package:carwash/ModelClass/Vehicle/getOneVehicleModel.dart';
@@ -479,6 +482,137 @@ class ApiProvider {
     } catch (error) {
       final errorResponse = handleError(error);
       return GetCustomerDropModel()..errorResponse = errorResponse;
+    }
+  }
+
+  /// Location list API Integration
+  Future<GetLocationModel> getLocationAPI() async {
+    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    var token = sharedPreferences.getString("token");
+    try {
+      var dio = Dio();
+      var response = await dio.request(
+        '${Constants.baseUrl}location/list',
+        options: Options(
+          method: 'GET',
+          headers: {
+            "Content-Type": "application/json",
+            if (token != null) "Authorization": "Bearer $token",
+          },
+        ),
+      );
+      if (response.statusCode == 200 && response.data != null) {
+        if (response.data['success'] == true) {
+          GetLocationModel getLocationResponse = GetLocationModel.fromJson(
+            response.data,
+          );
+          return getLocationResponse;
+        }
+      } else {
+        return GetLocationModel()
+          ..errorResponse = ErrorResponse(
+            message: "Error: ${response.data['message'] ?? 'Unknown error'}",
+            statusCode: response.statusCode,
+          );
+      }
+      return GetLocationModel()
+        ..errorResponse = ErrorResponse(
+          message: "Unexpected error occurred.",
+          statusCode: 500,
+        );
+    } on DioException catch (dioError) {
+      final errorResponse = handleError(dioError);
+      return GetLocationModel()..errorResponse = errorResponse;
+    } catch (error) {
+      final errorResponse = handleError(error);
+      return GetLocationModel()..errorResponse = errorResponse;
+    }
+  }
+
+  /// All Service List API Integration
+  Future<GetAllServiceModel> getAllServiceAPI() async {
+    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    var token = sharedPreferences.getString("token");
+    try {
+      var dio = Dio();
+      var response = await dio.request(
+        '${Constants.baseUrl}services/list',
+        options: Options(
+          method: 'GET',
+          headers: {
+            "Content-Type": "application/json",
+            if (token != null) "Authorization": "Bearer $token",
+          },
+        ),
+      );
+      if (response.statusCode == 200 && response.data != null) {
+        if (response.data['success'] == true) {
+          GetAllServiceModel getAllServiceResponse =
+              GetAllServiceModel.fromJson(response.data);
+          return getAllServiceResponse;
+        }
+      } else {
+        return GetAllServiceModel()
+          ..errorResponse = ErrorResponse(
+            message: "Error: ${response.data['message'] ?? 'Unknown error'}",
+            statusCode: response.statusCode,
+          );
+      }
+      return GetAllServiceModel()
+        ..errorResponse = ErrorResponse(
+          message: "Unexpected error occurred.",
+          statusCode: 500,
+        );
+    } on DioException catch (dioError) {
+      final errorResponse = handleError(dioError);
+      return GetAllServiceModel()..errorResponse = errorResponse;
+    } catch (error) {
+      final errorResponse = handleError(error);
+      return GetAllServiceModel()..errorResponse = errorResponse;
+    }
+  }
+
+  /// All Spare based on location API Integration
+  Future<GetAllSpareModel> getAllSpareAPI(String? locId) async {
+    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    var token = sharedPreferences.getString("token");
+    try {
+      var dio = Dio();
+      var response = await dio.request(
+        '${Constants.baseUrl}spares/list?locationId=$locId',
+        options: Options(
+          method: 'GET',
+          headers: {
+            "Content-Type": "application/json",
+            if (token != null) "Authorization": "Bearer $token",
+          },
+        ),
+      );
+      if (response.statusCode == 200 && response.data != null) {
+        if (response.data['success'] == true) {
+          GetAllSpareModel getAllSpareResponse = GetAllSpareModel.fromJson(
+            response.data,
+          );
+          return getAllSpareResponse;
+        }
+      } else {
+        return GetAllSpareModel()
+          ..errorResponse = ErrorResponse(
+            message: "Error: ${response.data['message'] ?? 'Unknown error'}",
+            statusCode: response.statusCode,
+          );
+      }
+      return GetAllSpareModel()
+        ..errorResponse = ErrorResponse(
+          message: "Unexpected error occurred.",
+          statusCode: 500,
+        );
+    } on DioException catch (dioError) {
+      final errorResponse = handleError(dioError);
+      return GetAllSpareModel()..errorResponse = errorResponse;
+    } catch (error) {
+      final errorResponse = handleError(error);
+      return GetAllSpareModel()..errorResponse = errorResponse;
     }
   }
 
