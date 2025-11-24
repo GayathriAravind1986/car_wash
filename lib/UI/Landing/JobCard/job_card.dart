@@ -5,6 +5,7 @@ import 'package:carwash/Reusable/color.dart';
 import 'package:carwash/Reusable/date_formatter.dart';
 import 'package:carwash/UI/Authentication/login_screen.dart';
 import 'package:carwash/UI/Landing/JobCard/add_job_card.dart';
+import 'package:carwash/UI/Landing/JobCard/edit_job_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
@@ -36,7 +37,7 @@ class _JobCardsPageViewState extends State<JobCardsPageView> {
   int offset = 0;
   int limit = 10;
   bool jobLoad = false;
-
+  bool? isEdit = false;
   Color getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'paid':
@@ -274,6 +275,7 @@ class _JobCardsPageViewState extends State<JobCardsPageView> {
 
   // 🔹 Tablet View => DataTable Layout
   Widget _buildScrollableTable() {
+    final isTablet = MediaQuery.of(context).size.width > 600;
     return jobLoad
         ? Container(
             padding: EdgeInsets.only(
@@ -318,10 +320,23 @@ class _JobCardsPageViewState extends State<JobCardsPageView> {
                         DataCell(
                           Row(
                             children: [
-                              Icon(
-                                Icons.edit,
-                                color: appSecondaryColor.withOpacity(0.7),
-                                size: 20,
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            UpdateJobCard(isTablet: isTablet),
+                                      ),
+                                    );
+                                  });
+                                },
+                                child: Icon(
+                                  Icons.edit,
+                                  color: appSecondaryColor.withOpacity(0.7),
+                                  size: 20,
+                                ),
                               ),
                               SizedBox(width: 8),
                               Icon(
@@ -342,6 +357,7 @@ class _JobCardsPageViewState extends State<JobCardsPageView> {
 
   // 🔹 Mobile View => ListView Layout
   Widget _buildListView() {
+    final isTablet = MediaQuery.of(context).size.width > 600;
     return jobLoad
         ? Container(
             padding: EdgeInsets.only(
@@ -412,10 +428,23 @@ class _JobCardsPageViewState extends State<JobCardsPageView> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          Icon(
-                            Icons.edit,
-                            color: appSecondaryColor.withOpacity(0.7),
-                            size: 20,
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        UpdateJobCard(isTablet: isTablet),
+                                  ),
+                                );
+                              });
+                            },
+                            child: Icon(
+                              Icons.edit,
+                              color: appSecondaryColor.withOpacity(0.7),
+                              size: 20,
+                            ),
                           ),
                           SizedBox(width: 8),
                           Icon(

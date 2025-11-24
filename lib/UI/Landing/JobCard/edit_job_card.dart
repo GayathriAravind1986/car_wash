@@ -19,28 +19,28 @@ import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class AddJobCard extends StatelessWidget {
+class UpdateJobCard extends StatelessWidget {
   final bool isTablet;
-  const AddJobCard({super.key, required this.isTablet});
+  const UpdateJobCard({super.key, required this.isTablet});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => JobCardBloc(),
-      child: AddJobCardView(isTablet: isTablet),
+      child: UpdateJobCardView(isTablet: isTablet),
     );
   }
 }
 
-class AddJobCardView extends StatefulWidget {
+class UpdateJobCardView extends StatefulWidget {
   final bool isTablet;
-  const AddJobCardView({super.key, required this.isTablet});
+  const UpdateJobCardView({super.key, required this.isTablet});
 
   @override
-  State<AddJobCardView> createState() => _AddJobCardViewState();
+  State<UpdateJobCardView> createState() => _UpdateJobCardViewState();
 }
 
-class _AddJobCardViewState extends State<AddJobCardView>
+class _UpdateJobCardViewState extends State<UpdateJobCardView>
     with SingleTickerProviderStateMixin {
   GetCustomerDropModel getCustomerDropModel = GetCustomerDropModel();
   GetVehicleByCustomerModel getVehicleByCustomerModel =
@@ -249,7 +249,6 @@ class _AddJobCardViewState extends State<AddJobCardView>
     return PopScope(
       canPop: false,
       onPopInvoked: (didPop) {
-        // Always navigate to Dashboard on back press
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
             builder: (context) => const DashBoardScreen(selectedTab: 0),
