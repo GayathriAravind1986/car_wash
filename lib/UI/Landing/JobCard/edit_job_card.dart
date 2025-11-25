@@ -260,7 +260,7 @@ class _UpdateJobCardViewState extends State<UpdateJobCardView>
         backgroundColor: appScaffoldBackground,
         appBar: AppBar(
           title: const Text(
-            "Create Job Card",
+            "Edit Job Card",
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
           ),
           leading: IconButton(

@@ -11,6 +11,7 @@ import 'package:carwash/ModelClass/JobCard/getAllServiceModel.dart';
 import 'package:carwash/ModelClass/JobCard/getAllSpareModel.dart';
 import 'package:carwash/ModelClass/JobCard/getCustomerDropModel.dart';
 import 'package:carwash/ModelClass/JobCard/getLocationModel.dart';
+import 'package:carwash/ModelClass/JobCard/postJobCardModel.dart';
 import 'package:carwash/ModelClass/ShopDetails/getShopDetailsModel.dart';
 import 'package:carwash/ModelClass/Vehicle/getAllVehiclesModel.dart';
 import 'package:carwash/ModelClass/Vehicle/getOneVehicleModel.dart';
@@ -613,6 +614,54 @@ class ApiProvider {
     } catch (error) {
       final errorResponse = handleError(error);
       return GetAllSpareModel()..errorResponse = errorResponse;
+    }
+  }
+
+  /// Create Job Card - API Integration
+  Future<PostJobCardModel> postJobCardAPI(
+    final String summaryPayloadJson,
+  ) async {
+    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+    var token = sharedPreferences.getString("token");
+    try {
+      var data = summaryPayloadJson;
+      var dio = Dio();
+      var response = await dio.request(
+        '${Constants.baseUrl}jobcards',
+        options: Options(
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        ),
+        data: data,
+      );
+      if (response.statusCode == 201 && response.data != null) {
+        if (response.data['success'] == true) {
+          PostJobCardModel postVehicleResponse = PostJobCardModel.fromJson(
+            response.data,
+          );
+          return postVehicleResponse;
+        }
+      } else {
+        return PostJobCardModel()
+          ..errorResponse = ErrorResponse(
+            message: "Error: ${response.data['message'] ?? 'Unknown error'}",
+            statusCode: response.statusCode,
+          );
+      }
+      return PostJobCardModel()
+        ..errorResponse = ErrorResponse(
+          message: "Unexpected error occurred.",
+          statusCode: 500,
+        );
+    } on DioException catch (dioError) {
+      final errorResponse = handleError(dioError);
+      return PostJobCardModel()..errorResponse = errorResponse;
+    } catch (error) {
+      final errorResponse = handleError(error);
+      return PostJobCardModel()..errorResponse = errorResponse;
     }
   }
 

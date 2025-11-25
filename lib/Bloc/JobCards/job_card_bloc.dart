@@ -25,6 +25,11 @@ class SpareList extends JobCardEvent {
   SpareList(this.locId);
 }
 
+class CreateJobCard extends JobCardEvent {
+  final String summaryPayloadJson;
+  CreateJobCard(this.summaryPayloadJson);
+}
+
 class JobCardBloc extends Bloc<JobCardEvent, dynamic> {
   JobCardBloc() : super(dynamic) {
     on<JobCardList>((event, emit) async {
@@ -80,6 +85,16 @@ class JobCardBloc extends Bloc<JobCardEvent, dynamic> {
     on<SpareList>((event, emit) async {
       await ApiProvider()
           .getAllSpareAPI(event.locId)
+          .then((value) {
+            emit(value);
+          })
+          .catchError((error) {
+            emit(error);
+          });
+    });
+    on<CreateJobCard>((event, emit) async {
+      await ApiProvider()
+          .postJobCardAPI(event.summaryPayloadJson)
           .then((value) {
             emit(value);
           })

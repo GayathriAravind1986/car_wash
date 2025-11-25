@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:carwash/Alertbox/snackBarAlert.dart';
 import 'package:carwash/Bloc/JobCards/job_card_bloc.dart';
 import 'package:carwash/ModelClass/Customer/getVehicleByCustomerModel.dart';
@@ -5,6 +7,7 @@ import 'package:carwash/ModelClass/JobCard/getAllServiceModel.dart' as svc;
 import 'package:carwash/ModelClass/JobCard/getAllSpareModel.dart' as spa;
 import 'package:carwash/ModelClass/JobCard/getCustomerDropModel.dart';
 import 'package:carwash/ModelClass/JobCard/getLocationModel.dart';
+import 'package:carwash/ModelClass/JobCard/postJobCardModel.dart';
 import 'package:carwash/ModelClass/Payment/payment_helper.dart';
 import 'package:carwash/Reusable/color.dart';
 import 'package:carwash/UI/Authentication/login_screen.dart';
@@ -48,6 +51,7 @@ class _AddJobCardViewState extends State<AddJobCardView>
   GetLocationModel getLocationModel = GetLocationModel();
   svc.GetAllServiceModel getAllServiceModel = svc.GetAllServiceModel();
   spa.GetAllSpareModel getAllSpareModel = spa.GetAllSpareModel();
+  PostJobCardModel postJobCardModel = PostJobCardModel();
   late TabController _tabController;
   bool jobLoad = false;
   bool vehLoad = false;
@@ -59,6 +63,7 @@ class _AddJobCardViewState extends State<AddJobCardView>
   String? email;
   String? phone;
   String? cusId;
+  String? vehId;
   String? regNo;
   String? year;
   String? locId;
@@ -76,11 +81,13 @@ class _AddJobCardViewState extends State<AddJobCardView>
   List<Map<String, dynamic>> allSpares = [];
   List<Map<String, dynamic>> filteredSpares = [];
   List<Map<String, dynamic>> selectedSpares = [];
-  double totalPrice = 0.0;
-  final List<String> locations = ["Chennai", "Madurai", "Coimbatore"];
+  double totalSparePrice = 0.0;
+
   final List<String> statuses = ["Pending", "In Progress", "Completed"];
   List<Payment> payments = [];
   bool showAddForm = false;
+  bool createLoad = false;
+
   void _toggleSpareSelection(Map<String, dynamic> spare) {
     final existingIndex = selectedSpares.indexWhere(
       (item) => item['part'] == spare['part'],
@@ -124,7 +131,7 @@ class _AddJobCardViewState extends State<AddJobCardView>
   }
 
   void _recalculateTotal() {
-    totalPrice = selectedSpares.fold<double>(
+    totalSparePrice = selectedSpares.fold<double>(
       0.0,
       (sum, spare) => sum + (spare['price'] as double? ?? 0.0),
     );
@@ -157,6 +164,8 @@ class _AddJobCardViewState extends State<AddJobCardView>
     locationController.dispose();
     dateController.dispose();
     notesController.dispose();
+    notesPaymentController.dispose();
+    amountPaymentController.dispose();
     _tabController.dispose();
     for (var controller in _priceControllers.values) {
       controller.dispose();
@@ -249,7 +258,6 @@ class _AddJobCardViewState extends State<AddJobCardView>
     return PopScope(
       canPop: false,
       onPopInvoked: (didPop) {
-        // Always navigate to Dashboard on back press
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
             builder: (context) => const DashBoardScreen(selectedTab: 0),
@@ -393,6 +401,57 @@ class _AddJobCardViewState extends State<AddJobCardView>
               if (getAllSpareModel.errorResponse?.isUnauthorized == true) {
                 _handle401Error();
                 return true;
+              }
+              return true;
+            }
+            if (current is PostJobCardModel) {
+              postJobCardModel = current;
+              if (postJobCardModel.errorResponse?.isUnauthorized == true) {
+                _handle401Error();
+                return true;
+              }
+              if (postJobCardModel.errorResponse?.statusCode == 500) {
+                showToast(
+                  postJobCardModel.message ?? "Server error occurred",
+                  context,
+                  color: false,
+                );
+                setState(() => createLoad = false);
+                return true;
+              }
+              if (postJobCardModel.success == true) {
+                debugPrint("success True");
+                showToast(
+                  postJobCardModel.message ?? "Job card created successfully",
+                  context,
+                  color: true,
+                );
+                setState(() {
+                  createLoad = false;
+                });
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(
+                    builder: (context) => const DashBoardScreen(),
+                  ),
+                  (Route<dynamic> route) => false,
+                );
+              } else if (postJobCardModel.success == false) {
+                showToast(
+                  postJobCardModel.message.toString(),
+                  context,
+                  color: true,
+                );
+                setState(() {
+                  createLoad = false;
+                });
+              } else if (postJobCardModel.errorResponse != null) {
+                showToast(
+                  postJobCardModel.errorResponse?.message ??
+                      "An error occurred",
+                  context,
+                  color: false,
+                );
+                setState(() => createLoad = false);
               }
               return true;
             }
@@ -697,6 +756,7 @@ class _AddJobCardViewState extends State<AddJobCardView>
 
                 setState(() {
                   vehicleController.text = selected;
+                  vehId = v.id ?? "";
                   regNo = v.registrationNumber ?? "";
                   year = v.year ?? "";
                 });
@@ -1772,7 +1832,86 @@ class _AddJobCardViewState extends State<AddJobCardView>
                   ),
                 ),
                 onPressed: () {
-                  setState(() {});
+                  setState(() {
+                    List<Map<String, dynamic>> buildSelectedServicesJson() {
+                      return selectedServices.map((service) {
+                        return {
+                          "id": service.id,
+                          "name": service.name,
+                          "price": service.price,
+                        };
+                      }).toList();
+                    }
+
+                    final services = buildSelectedServicesJson();
+                    List<Map<String, dynamic>> buildSelectedSparesJson() {
+                      return selectedSpares.map((spare) {
+                        return {
+                          "id": spare["id"],
+                          "name": spare["name"],
+                          "partNumber": spare["part"],
+                          "unitPrice": spare["price"],
+                          "inStock": spare["stock"],
+                          "quantity": spare["qty"],
+                        };
+                      }).toList();
+                    }
+
+                    List<Map<String, dynamic>> buildPaymentsJson() {
+                      return payments.map((p) {
+                        return {
+                          "date": DateFormat("yyyy-MM-dd").format(p.date),
+                          "amount": p.amount,
+                          "method": p.mode.toLowerCase(),
+                          "notes": p.notes,
+                        };
+                      }).toList();
+                    }
+
+                    final uiDate = dateController.text;
+                    final parsedDate = DateFormat("dd-MM-yyyy").parse(uiDate);
+                    final apiDate = DateFormat("yyyy-MM-dd").format(parsedDate);
+                    debugPrint(
+                      "Service Details: ${jsonEncode(buildSelectedServicesJson())}",
+                    );
+                    debugPrint(
+                      "Spare Details: ${jsonEncode(buildSelectedSparesJson())}",
+                    );
+                    debugPrint(
+                      "Payment Details: ${jsonEncode(buildPaymentsJson())}",
+                    );
+                    if (cusId == null && vehId == null) {
+                      showToast(
+                        "Please select the Customer and Vehicle",
+                        context,
+                        color: false,
+                      );
+                    } else if (services.isEmpty) {
+                      showToast(
+                        "Please select the Service",
+                        context,
+                        color: false,
+                      );
+                    } else {
+                      createLoad = true;
+                      final payload = {
+                        "customerId": cusId,
+                        "vehicleId": vehId,
+                        "locationId": locId,
+                        "status": selectedStatus,
+                        "notes": notesController.text ?? "",
+                        "serviceDate": apiDate,
+                        "selectedServices": buildSelectedServicesJson(),
+                        "selectedSpares": buildSelectedSparesJson(),
+                        "totalCost": grandTotal,
+                        "payments": buildPaymentsJson(),
+                      };
+                      debugPrint("Payload Details: ${jsonEncode(payload)}");
+                      context.read<JobCardBloc>().add(
+                        CreateJobCard(jsonEncode(payload)),
+                      );
+                    }
+                  });
                 },
                 label: const Text(
                   "Create Job Card",

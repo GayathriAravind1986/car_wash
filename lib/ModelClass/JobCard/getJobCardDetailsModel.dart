@@ -1,9 +1,16 @@
+import 'package:carwash/Bloc/Response/errorResponse.dart';
+
 /// success : true
 /// message : "Job card fetch successfully"
 /// result : {"id":"8677468c-b5f5-4ce2-a097-ea63866ffe6a","customerId":"cec28d95-0c91-4c0b-abde-f338c62c220d","locationId":"8fa3c3b6-7455-4a9e-8405-651e4857eb83","shopId":"07839faa-da5e-4c5e-880c-ebda723906c3","vehicleId":"6395fe3c-a10b-4022-8349-117bc5515a66","totalCost":"7820.00","status":"pending","notes":"","serviceDate":"2025-11-10T00:00:00.000Z","completionDate":null,"createdAt":"2025-11-10T08:52:37.225Z","updatedAt":"2025-11-10T08:52:37.225Z","jobCardServices":[{"id":"3e883d36-1f6d-4fb8-a103-e452315bb426","jobCardId":"8677468c-b5f5-4ce2-a097-ea63866ffe6a","shopId":"07839faa-da5e-4c5e-880c-ebda723906c3","serviceId":"744bd56f-a127-4f70-abb6-4173d74f6220","price":"0.00","createdAt":"2025-11-10T08:52:37.225Z"},{"id":"145cf2ef-159a-44fe-886f-94dadd68fd13","jobCardId":"8677468c-b5f5-4ce2-a097-ea63866ffe6a","shopId":"07839faa-da5e-4c5e-880c-ebda723906c3","serviceId":"47dafc36-9bb6-4dc0-9464-8b4fbaa5e8fe","price":"0.00","createdAt":"2025-11-10T08:52:37.225Z"}],"jobCardSpares":[{"id":"a28c0733-2c7d-4518-82df-e07005a90bec","jobCardId":"8677468c-b5f5-4ce2-a097-ea63866ffe6a","shopId":"07839faa-da5e-4c5e-880c-ebda723906c3","spareId":"7e84e73a-33ab-41e3-9742-a2abd30fd0ae","unitPrice":"10.00","quantity":2,"createdAt":"2025-11-10T08:52:37.225Z"},{"id":"5d12879b-1c37-49ed-92c0-41692cb3e173","jobCardId":"8677468c-b5f5-4ce2-a097-ea63866ffe6a","shopId":"07839faa-da5e-4c5e-880c-ebda723906c3","spareId":"2603b2fc-4c1c-462f-bdfa-623b4959dc35","unitPrice":"150.00","quantity":2,"createdAt":"2025-11-10T08:52:37.225Z"},{"id":"88976e3c-5352-4784-bd24-d470eb06fe06","jobCardId":"8677468c-b5f5-4ce2-a097-ea63866ffe6a","shopId":"07839faa-da5e-4c5e-880c-ebda723906c3","spareId":"f62c718a-0fcf-4045-a84a-b6eb43739197","unitPrice":"5000.00","quantity":1,"createdAt":"2025-11-10T08:52:37.225Z"}],"invoices":[{"id":"c37b6a6f-91a2-4838-bd0f-7690c9e45728","jobCardId":"8677468c-b5f5-4ce2-a097-ea63866ffe6a","shopId":"07839faa-da5e-4c5e-880c-ebda723906c3","customerId":"cec28d95-0c91-4c0b-abde-f338c62c220d","invoiceNumber":"INV-758351-7OQOFN","totalAmount":"7820.00","status":"partially-paid","issuedDate":"2025-11-10T08:52:38.351Z","dueDate":"2025-11-17T08:52:38.351Z","notes":"","createdAt":"2025-11-10T08:52:37.225Z","updatedAt":"2025-11-10T08:52:38.444Z","payments":[]}],"payments":[{"id":"c95d89ec-552b-4198-aa3a-0d894da91414","jobCardId":"8677468c-b5f5-4ce2-a097-ea63866ffe6a","shopId":"07839faa-da5e-4c5e-880c-ebda723906c3","customerId":"cec28d95-0c91-4c0b-abde-f338c62c220d","amount":"5000.00","paymentMethod":"cash","paymentDate":"2025-11-03T00:00:00.000Z","isRefunded":false,"notes":"Cash","createdAt":"2025-11-10T08:52:37.225Z","updatedAt":"2025-11-10T08:52:37.225Z"}]}
 
 class GetJobCardDetailsModel {
-  GetJobCardDetailsModel({bool? success, String? message, Result? result}) {
+  GetJobCardDetailsModel({
+    bool? success,
+    String? message,
+    Result? result,
+    ErrorResponse? errorResponse,
+  }) {
     _success = success;
     _message = message;
     _result = result;
@@ -13,10 +20,16 @@ class GetJobCardDetailsModel {
     _success = json['success'];
     _message = json['message'];
     _result = json['result'] != null ? Result.fromJson(json['result']) : null;
+    if (json['errors'] != null && json['errors'] is Map<String, dynamic>) {
+      errorResponse = ErrorResponse.fromJson(json['errors']);
+    } else {
+      errorResponse = null;
+    }
   }
   bool? _success;
   String? _message;
   Result? _result;
+  ErrorResponse? errorResponse;
   GetJobCardDetailsModel copyWith({
     bool? success,
     String? message,
@@ -36,6 +49,9 @@ class GetJobCardDetailsModel {
     map['message'] = _message;
     if (_result != null) {
       map['result'] = _result?.toJson();
+    }
+    if (errorResponse != null) {
+      map['errors'] = errorResponse!.toJson();
     }
     return map;
   }
